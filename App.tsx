@@ -114,8 +114,8 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
     }
 
     let result = await ImagePicker.launchImageLibraryAsync({
-      // --- FIX: Use new MediaType enum ---
-      mediaTypes: ImagePicker.MediaType.Images,
+      // Use array of strings for mediaTypes
+      mediaTypes: ["images"],
       allowsEditing: true,
       quality: 0.8,
     });
