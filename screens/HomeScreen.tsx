@@ -17,10 +17,11 @@ import {
 // --- FIX: Import new SafeAreaView ---
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
-import { Style, StyleCategory } from "./types";
-import { ROOM_TYPES, STYLE_CATEGORIES } from "./constants";
-import * as geminiService from "./services/geminiService";
-import Loader from "./components/Loader";
+// --- UPDATED Import Paths ---
+import { Style, StyleCategory } from "../types";
+import { ROOM_TYPES, STYLE_CATEGORIES } from "../constants";
+import * as geminiService from "../services/geminiService";
+import Loader from "../components/Loader";
 import {
   UploadIcon,
   CameraIcon,
@@ -30,7 +31,10 @@ import {
   LogoIcon,
   DecorateIcon,
   AccordionChevronIcon,
-} from "./components/Icons";
+} from "../components/Icons";
+
+// --- ADDED: Import Auth Context ---
+import { useAuth } from "../context/AuthContext";
 
 // Import Native Modules
 import * as ImagePicker from "expo-image-picker";
@@ -38,7 +42,8 @@ import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
 import { Camera, CameraView } from "expo-camera";
 
-const Header: React.FC = () => (
+// --- MODIFIED: Header component to accept onLogout prop ---
+const Header: React.FC<{ onLogout: () => void }> = ({ onLogout }) => (
   <View style={styles.header}>
     <View style={styles.headerNav}>
       <View style={styles.headerLogoContainer}>
@@ -50,7 +55,8 @@ const Header: React.FC = () => (
           </Text>
         </View>
       </View>
-      <TouchableOpacity style={styles.logoutButton}>
+      {/* --- MODIFIED: Logout button calls onLogout --- */}
+      <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
         <Text style={styles.logoutButtonText}>Logout</Text>
       </TouchableOpacity>
     </View>
@@ -265,7 +271,8 @@ const GeneratedImageDisplay: React.FC<{
   );
 };
 
-const App: React.FC = () => {
+// --- RENAMED: from App to HomeScreen ---
+const HomeScreen: React.FC = () => {
   const [sourceFileUri, setSourceFileUri] = useState<string | null>(null);
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
@@ -282,6 +289,9 @@ const App: React.FC = () => {
     STYLE_CATEGORIES[0].name
   );
   const [credits, setCredits] = useState(119);
+
+  // --- ADDED: Get logout function from auth context ---
+  const { logout } = useAuth();
 
   const handleImageSelect = (uri: string) => {
     setSourceFileUri(uri);
@@ -536,7 +546,8 @@ const App: React.FC = () => {
   return (
     <SafeAreaView style={styles.appContainer}>
       {isLoading && <Loader message={loadingMessage} />}
-      <Header />
+      {/* --- MODIFIED: Pass logout function to Header --- */}
+      <Header onLogout={logout} />
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {error && (
           <View style={styles.errorBox}>
@@ -940,4 +951,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default App;
+// --- RENAMED: Changed default export ---
+export default HomeScreen;
