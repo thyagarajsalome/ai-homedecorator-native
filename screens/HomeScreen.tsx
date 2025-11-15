@@ -5,7 +5,6 @@ import {
   Text,
   TouchableOpacity,
   Image,
-  // --- FIX: Removed deprecated SafeAreaView ---
   ScrollView,
   Alert,
   Share,
@@ -14,10 +13,8 @@ import {
   Platform,
   Modal,
 } from "react-native";
-// --- FIX: Import new SafeAreaView ---
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
-// --- UPDATED Import Paths ---
 import { Style, StyleCategory } from "../types";
 import { ROOM_TYPES, STYLE_CATEGORIES } from "../constants";
 import * as geminiService from "../services/geminiService";
@@ -32,9 +29,10 @@ import {
   DecorateIcon,
   AccordionChevronIcon,
 } from "../components/Icons";
-
-// --- ADDED: Import Auth Context ---
 import { useAuth } from "../context/AuthContext";
+
+// --- IMPORT: The new common Header ---
+import Header from "../components/Header";
 
 // Import Native Modules
 import * as ImagePicker from "expo-image-picker";
@@ -42,26 +40,7 @@ import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
 import { Camera, CameraView } from "expo-camera";
 
-// --- MODIFIED: Header component to accept onLogout prop ---
-const Header: React.FC<{ onLogout: () => void }> = ({ onLogout }) => (
-  <View style={styles.header}>
-    <View style={styles.headerNav}>
-      <View style={styles.headerLogoContainer}>
-        <LogoIcon />
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>AI Home Decorator</Text>
-          <Text style={styles.headerSubtitle}>
-            See your dream space come to life.
-          </Text>
-        </View>
-      </View>
-      {/* --- MODIFIED: Logout button calls onLogout --- */}
-      <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-        <Text style={styles.logoutButtonText}>Logout</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-);
+// --- DELETED: The old Header component definition is removed from here ---
 
 const CameraModal: React.FC<{
   isVisible: boolean;
@@ -96,7 +75,6 @@ const CameraModal: React.FC<{
             onPress={takePicture}
             style={styles.cameraButtonCapture}
           />
-          {/* --- FIX: Removed potential stray text comment --- */}
           <View style={{ width: 80 }} />
         </View>
       </View>
@@ -120,7 +98,6 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
     }
 
     let result = await ImagePicker.launchImageLibraryAsync({
-      // Use array of strings for mediaTypes
       mediaTypes: ["images"],
       allowsEditing: true,
       quality: 0.8,
@@ -271,8 +248,7 @@ const GeneratedImageDisplay: React.FC<{
   );
 };
 
-// --- RENAMED: from App to HomeScreen ---
-const HomeScreen: React.FC = () => {
+const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [sourceFileUri, setSourceFileUri] = useState<string | null>(null);
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
@@ -290,7 +266,6 @@ const HomeScreen: React.FC = () => {
   );
   const [credits, setCredits] = useState(119);
 
-  // --- ADDED: Get logout function from auth context ---
   const { logout } = useAuth();
 
   const handleImageSelect = (uri: string) => {
@@ -544,10 +519,26 @@ const HomeScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.appContainer}>
+    // --- MODIFIED: Use `edges` prop to avoid top padding ---
+    <SafeAreaView
+      style={styles.appContainer}
+      edges={["bottom", "left", "right"]}
+    >
       {isLoading && <Loader message={loadingMessage} />}
-      {/* --- MODIFIED: Pass logout function to Header --- */}
-      <Header onLogout={logout} />
+      {/* --- MODIFIED: Use new Header and pass buttons as children --- */}
+      <Header>
+        <View style={styles.authButtonsContainer}>
+          <TouchableOpacity
+            style={styles.aboutButton}
+            onPress={() => navigation.navigate("About")}
+          >
+            <Text style={styles.aboutButtonText}>About</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      </Header>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {error && (
           <View style={styles.errorBox}>
@@ -565,7 +556,38 @@ const { width } = Dimensions.get("window");
 const isSmallScreen = width < 768;
 
 const styles = StyleSheet.create({
-  // Add Camera Modal Styles
+  // --- DELETED: Header styles are moved to components/Header.tsx ---
+  // ... (header, headerNav, headerLogoContainer, etc. are gone) ...
+
+  // --- ADDED: Styles for the buttons passed to the header ---
+  authButtonsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  aboutButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  aboutButtonText: {
+    color: "#D1D5DB",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  logoutButton: {
+    backgroundColor: "#DC2626",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  logoutButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+
+  // --- All other styles remain the same ---
   cameraControls: {
     position: "absolute",
     bottom: 0,
@@ -592,7 +614,6 @@ const styles = StyleSheet.create({
     borderColor: "#CCC",
     borderWidth: 5,
   },
-
   appContainer: {
     flex: 1,
     backgroundColor: "#111827",
@@ -600,45 +621,6 @@ const styles = StyleSheet.create({
   scrollContainer: {
     paddingBottom: 48,
     paddingHorizontal: 16,
-  },
-  header: {
-    backgroundColor: "rgba(17, 24, 39, 0.8)",
-    borderBottomWidth: 1,
-    borderBottomColor: "#374151",
-  },
-  headerNav: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    height: 64,
-    paddingHorizontal: 16,
-  },
-  headerLogoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  headerTitleContainer: {
-    marginLeft: 16,
-  },
-  headerTitle: {
-    color: "#C084FC",
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  headerSubtitle: {
-    color: "#9CA3AF",
-    fontSize: 12,
-  },
-  logoutButton: {
-    backgroundColor: "#DC2626",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  logoutButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 14,
   },
   uploaderArea: {
     marginTop: 48,
@@ -951,5 +933,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// --- RENAMED: Changed default export ---
 export default HomeScreen;

@@ -9,9 +9,8 @@ import {
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { LogoIcon } from "../components/Icons";
-
-// We can reuse styles from the main app, but I'll define basics here
-// for a real app, you'd move common styles to a separate file.
+// --- IMPORT: The new common Header ---
+import Header from "../components/Header";
 
 const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -28,7 +27,14 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.appContainer}>
+    // --- MODIFIED: Use `edges` prop to avoid top padding ---
+    <SafeAreaView
+      style={styles.appContainer}
+      edges={["bottom", "left", "right"]}
+    >
+      {/* --- ADDED: The common Header --- */}
+      <Header />
+
       <View style={styles.container}>
         <LogoIcon style={{ width: 60, height: 60, marginBottom: 20 }} />
         <Text style={styles.title}>Welcome Back</Text>
@@ -74,7 +80,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "center", // This will center the form in the remaining space
     alignItems: "center",
     paddingHorizontal: 24,
   },
