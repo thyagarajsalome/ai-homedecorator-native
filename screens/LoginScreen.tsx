@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  ScrollView, // --- ADDED: ScrollView for smaller screens ---
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { LogoIcon } from "../components/Icons";
-// --- IMPORT: The new common Header ---
 import Header from "../components/Header";
 
 const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
@@ -27,15 +27,13 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   return (
-    // --- MODIFIED: Use `edges` prop to avoid top padding ---
     <SafeAreaView
       style={styles.appContainer}
       edges={["bottom", "left", "right"]}
     >
-      {/* --- ADDED: The common Header --- */}
       <Header />
-
-      <View style={styles.container}>
+      {/* --- MODIFIED: Use ScrollView to prevent overflow --- */}
+      <ScrollView contentContainerStyle={styles.container}>
         <LogoIcon style={{ width: 60, height: 60, marginBottom: 20 }} />
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Log in to continue decorating</Text>
@@ -67,22 +65,36 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             Don't have an account? <Text style={styles.link}>Sign Up</Text>
           </Text>
         </TouchableOpacity>
-      </View>
+
+        {/* --- ADDED: Legal links --- */}
+        <View style={styles.legalContainer}>
+          <Text style={styles.legalText}>By logging in, you agree to our</Text>
+          <View style={styles.legalLinks}>
+            <TouchableOpacity onPress={() => navigation.navigate("Privacy")}>
+              <Text style={styles.legalLink}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalText}> and </Text>
+            <TouchableOpacity onPress={() => navigation.navigate("Disclaimer")}>
+              <Text style={styles.legalLink}>Disclaimer</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
-// Reusing and adapting styles from App.tsx
 const styles = StyleSheet.create({
   appContainer: {
     flex: 1,
     backgroundColor: "#111827",
   },
   container: {
-    flex: 1,
-    justifyContent: "center", // This will center the form in the remaining space
+    flexGrow: 1, // --- MODIFIED: Use flexGrow for ScrollView ---
+    justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
+    paddingVertical: 20, // --- ADDED: Padding for ScrollView ---
   },
   title: {
     fontSize: 28,
@@ -126,6 +138,25 @@ const styles = StyleSheet.create({
   link: {
     color: "#C084FC",
     fontWeight: "bold",
+  },
+  // --- ADDED: Styles for legal links ---
+  legalContainer: {
+    marginTop: 48,
+    alignItems: "center",
+  },
+  legalLinks: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  legalText: {
+    color: "#6B7280",
+    fontSize: 12,
+  },
+  legalLink: {
+    color: "#9CA3AF",
+    fontSize: 12,
+    textDecorationLine: "underline",
   },
 });
 
