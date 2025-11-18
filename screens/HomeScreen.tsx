@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
+import { useFocusEffect } from "@react-navigation/native"; // Added for auto-refresh
 import { Style } from "../types";
 import { ROOM_TYPES, STYLE_CATEGORIES } from "../constants";
 import * as geminiService from "../services/geminiService";
@@ -30,12 +31,15 @@ import {
 } from "../components/Icons";
 import { useAuth } from "../context/AuthContext";
 import Header from "../components/Header";
+import { supabase } from "../lib/supabase"; // Added Supabase import
 
 // Import Native Modules
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
 import { CameraView, Camera } from "expo-camera";
+
+// --- Components ---
 
 const CameraModal: React.FC<{
   isVisible: boolean;
@@ -47,7 +51,7 @@ const CameraModal: React.FC<{
   const takePicture = async () => {
     if (cameraRef.current) {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.5, // Optimize camera photo size immediately
+        quality: 0.5, // Optimization: Small size for fast upload
       });
       if (photo) {
         onPictureTaken(photo.uri);
@@ -97,8 +101,8 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
-      aspect: [4, 3], // Force a standard aspect ratio
-      quality: 0.5, // <--- CRITICAL OPTIMIZATION: Reduces upload size/time
+      aspect: [4, 3],
+      quality: 0.5, // Optimization: Small size for fast upload
     });
 
     if (!result.canceled) {
@@ -246,6 +250,8 @@ const GeneratedImageDisplay: React.FC<{
   );
 };
 
+// --- Main Screen ---
+
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [sourceFileUri, setSourceFileUri] = useState<string | null>(null);
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
@@ -261,9 +267,39 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [activeAccordion, setActiveAccordion] = useState<string | null>(
     STYLE_CATEGORIES[0].name
   );
-  const [credits, setCredits] = useState(119);
 
-  const { logout } = useAuth();
+  // Changed: Start with 0 credits and fetch real value
+  const [credits, setCredits] = useState(0);
+
+  const { session, logout } = useAuth();
+
+  // --- Supabase: Fetch Credits logic ---
+  const fetchCredits = async () => {
+    if (!session?.user) return;
+
+    try {
+      // Assuming your table is named 'profiles' or 'users' and has a 'credits' column
+      // Adjust table name if yours is different
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("credits")
+        .eq("id", session.user.id)
+        .single();
+
+      if (data) {
+        setCredits(data.credits);
+      }
+    } catch (err) {
+      console.log("Error fetching credits:", err);
+    }
+  };
+
+  // Refresh credits every time the screen is focused (e.g. after returning from background)
+  useFocusEffect(
+    useCallback(() => {
+      fetchCredits();
+    }, [session])
+  );
 
   const handleImageSelect = (uri: string) => {
     setSourceFileUri(uri);
@@ -280,6 +316,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setError(null);
     setDecorMode("style");
     setRoomType("");
+    // Refresh credits to ensure UI is in sync
+    fetchCredits();
   };
 
   const handleDecorate = async () => {
@@ -296,8 +334,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setError("Please select a style or enter a custom design.");
       return;
     }
+
+    // Updated Logic: Check Credits & Show Policy-Safe Alert
     if (credits < creditCost) {
-      setError("Not enough credits to perform this action.");
+      Alert.alert(
+        "Insufficient Credits",
+        "You do not have enough credits to generate this design.\n\nPlease manage your plan on our website: aihomedecorator.com",
+        [{ text: "OK" }]
+      );
       return;
     }
 
@@ -305,12 +349,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setIsLoading(true);
 
     try {
+      // This now calls your backend service (Cloud Run) via the updated geminiService
       const result = await geminiService.decorateRoom(
         sourceFileUri,
         decorationPrompt,
         roomType
       );
       setGeneratedImageUrl(result);
+
+      // Optimistic update (real update happens on next fetch)
       setCredits((prev) => prev - creditCost);
     } catch (e: any) {
       setError(e.message || "An unknown error occurred.");

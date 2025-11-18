@@ -1,49 +1,8 @@
-import { GoogleGenAI, Modality } from "@google/genai";
-// --- FIX: Import from legacy API ---
-import * as FileSystem from "expo-file-system/legacy";
-import { GEMINI_API_KEY } from "@env";
+import * as FileSystem from "expo-file-system";
+import { supabase } from "../lib/supabase"; // We need this to get the JWT token
 
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY as string });
-
-export const fileToBase64 = async (
-  fileUri: string
-): Promise<{ mimeType: string; data: string }> => {
-  try {
-    console.log("Reading file from URI:", fileUri);
-
-    // Now using the legacy API, EncodingType should be available
-    const data = await FileSystem.readAsStringAsync(fileUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    console.log("Successfully read file, data length:", data.length);
-
-    // Infer MIME type from extension
-    const extension = fileUri.split(".").pop()?.toLowerCase();
-    let mimeType = "image/jpeg"; // default
-    if (extension === "png") {
-      mimeType = "image/png";
-    }
-
-    return { mimeType, data };
-  } catch (error) {
-    console.error("=== ERROR IN fileToBase64 ===");
-    console.error("Error details:", error);
-    console.error("Error message:", (error as Error).message);
-    console.error("Error stack:", (error as Error).stack);
-    throw new Error(
-      "Failed to process image file: " + (error as Error).message
-    );
-  }
-};
-
-const getBase64FromResponse = (response: any): string | null => {
-  const part = response?.candidates?.[0]?.content?.parts?.[0];
-  if (part?.inlineData?.data) {
-    return part.inlineData.data;
-  }
-  return null;
-};
+// Your Cloud Run URL
+const BACKEND_URL = "https://your-cloud-run-service-xyz.a.run.app";
 
 export const decorateRoom = async (
   imageUri: string,
@@ -51,47 +10,44 @@ export const decorateRoom = async (
   roomType?: string
 ): Promise<string> => {
   try {
-    console.log("Starting decoration process...");
-    console.log("Image URI:", imageUri);
-    console.log("Style prompt:", stylePrompt);
-    console.log("Room type:", roomType);
+    // 1. Get the current User Token to authorize with your Backend
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const token = session?.access_token;
 
-    const { mimeType, data } = await fileToBase64(imageUri);
+    if (!token) throw new Error("User not authenticated");
 
-    console.log("Image converted to base64, mimeType:", mimeType);
-    console.log("Base64 data length:", data.length);
-
-    const fullPrompt = `Redecorate this ${
-      roomType ? roomType.toLowerCase() : "room"
-    } in ${stylePrompt}. Maintain the original room structure and layout but change the furniture, wall color, and decorations to match the new style.`;
-
-    console.log("Sending request to Gemini API...");
-    console.log("Full prompt:", fullPrompt);
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
-      contents: {
-        parts: [{ inlineData: { data, mimeType } }, { text: fullPrompt }],
-      },
-      config: {
-        responseModalities: [Modality.IMAGE],
-      },
+    // 2. Read file as Base64
+    const base64 = await FileSystem.readAsStringAsync(imageUri, {
+      encoding: FileSystem.EncodingType.Base64,
     });
 
-    console.log("Received response from Gemini API");
+    // 3. Call your Cloud Run Backend
+    const response = await fetch(`${BACKEND_URL}/api/decorate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // Send token for verification
+      },
+      body: JSON.stringify({
+        image: `data:image/jpeg;base64,${base64}`, // Send standard data URI
+        prompt: stylePrompt,
+        roomType: roomType,
+      }),
+    });
 
-    const base64Image = getBase64FromResponse(response);
-    if (!base64Image) {
-      console.error("No image data in response");
-      throw new Error("API did not return an image.");
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Backend processing failed");
     }
 
-    console.log("Successfully extracted image from response");
-    return `data:image/jpeg;base64,${base64Image}`;
+    const result = await response.json();
+
+    // Assuming your backend returns { generatedImage: "base64..." }
+    return result.generatedImage;
   } catch (error) {
-    console.error("=== ERROR IN decorateRoom ===");
-    console.error("Error details:", error);
-    console.error("Error message:", (error as Error).message);
-    throw new Error("Failed to decorate the room: " + (error as Error).message);
+    console.error("Error in decorateRoom:", error);
+    throw error;
   }
 };
