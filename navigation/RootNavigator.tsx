@@ -7,13 +7,13 @@ import LoginScreen from "../screens/LoginScreen";
 import SignUpScreen from "../screens/SignUpScreen";
 import HomeScreen from "../screens/HomeScreen";
 import AboutScreen from "../screens/AboutScreen";
-// --- ADDED: Import new screens ---
+// --- 1. ADDED: Import the new screens ---
 import PrivacyScreen from "../screens/PrivacyScreen";
 import DisclaimerScreen from "../screens/DisclaimerScreen";
 
 const Stack = createNativeStackNavigator();
 
-// --- ADDED: Define common screen options for legal pages ---
+// --- 2. ADDED: Define common screen options for legal pages ---
 const legalScreenOptions: any = {
   headerShown: true,
   headerStyle: {
@@ -37,14 +37,15 @@ const RootNavigator: React.FC = () => {
             <Stack.Screen
               name="Home"
               component={HomeScreen}
-              options={{ headerShown: false }}
+              options={{ headerShown: false }} // No header for main screen
             />
             <Stack.Screen
               name="About"
               component={AboutScreen}
+              // --- 3. MODIFIED: Use common options ---
               options={{ ...legalScreenOptions, title: "About" }}
             />
-            {/* --- ADDED: Legal screens to App stack --- */}
+            {/* --- 4. ADDED: Legal screens to App stack --- */}
             <Stack.Screen
               name="Privacy"
               component={PrivacyScreen}
@@ -69,7 +70,7 @@ const RootNavigator: React.FC = () => {
               component={SignUpScreen}
               options={{ headerShown: false }}
             />
-            {/* --- ADDED: Legal screens to Auth stack --- */}
+            {/* --- 5. ADDED: Legal screens to Auth stack --- */}
             <Stack.Screen
               name="Privacy"
               component={PrivacyScreen}
