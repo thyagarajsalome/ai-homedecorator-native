@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
-import { Style, StyleCategory } from "../types";
+import { Style } from "../types";
 import { ROOM_TYPES, STYLE_CATEGORIES } from "../constants";
 import * as geminiService from "../services/geminiService";
 import Loader from "../components/Loader";
@@ -25,22 +25,17 @@ import {
   DownloadIcon,
   ShareIcon,
   ResetIcon,
-  LogoIcon,
   DecorateIcon,
   AccordionChevronIcon,
 } from "../components/Icons";
 import { useAuth } from "../context/AuthContext";
-
-// --- IMPORT: The new common Header ---
 import Header from "../components/Header";
 
 // Import Native Modules
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
-import { Camera, CameraView } from "expo-camera";
-
-// --- DELETED: The old Header component definition is removed from here ---
+import { CameraView, Camera } from "expo-camera";
 
 const CameraModal: React.FC<{
   isVisible: boolean;
@@ -51,7 +46,9 @@ const CameraModal: React.FC<{
 
   const takePicture = async () => {
     if (cameraRef.current) {
-      const photo = await cameraRef.current.takePictureAsync();
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.5, // Optimize camera photo size immediately
+      });
       if (photo) {
         onPictureTaken(photo.uri);
       }
@@ -100,7 +97,8 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
-      quality: 0.8,
+      aspect: [4, 3], // Force a standard aspect ratio
+      quality: 0.5, // <--- CRITICAL OPTIMIZATION: Reduces upload size/time
     });
 
     if (!result.canceled) {
@@ -139,7 +137,7 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
       <View style={styles.uploaderButtonContainer}>
         <TouchableOpacity
           onPress={openImageGallery}
-          style={[styles.button, styles.buttonPrimary]}
+          style={[styles.button, styles.buttonPrimary, styles.uploadBtnSpacing]}
         >
           <UploadIcon style={styles.buttonIcon} />
           <Text style={styles.buttonText}>Upload Image</Text>
@@ -258,7 +256,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [roomType, setRoomType] = useState<string>("");
   const [selectedStyle, setSelectedStyle] = useState<Style | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [loadingMessage, setLoadingMessage] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [decorMode, setDecorMode] = useState<"style" | "custom">("style");
   const [activeAccordion, setActiveAccordion] = useState<string | null>(
@@ -306,7 +303,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
     setError(null);
     setIsLoading(true);
-    setLoadingMessage("Redecorating your space...");
 
     try {
       const result = await geminiService.decorateRoom(
@@ -320,7 +316,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setError(e.message || "An unknown error occurred.");
     } finally {
       setIsLoading(false);
-      setLoadingMessage("");
     }
   };
 
@@ -519,13 +514,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   return (
-    // --- MODIFIED: Use `edges` prop to avoid top padding ---
     <SafeAreaView
       style={styles.appContainer}
       edges={["bottom", "left", "right"]}
     >
-      {isLoading && <Loader message={loadingMessage} />}
-      {/* --- MODIFIED: Use new Header and pass buttons as children --- */}
+      {isLoading && <Loader />}
       <Header>
         <View style={styles.authButtonsContainer}>
           <TouchableOpacity
@@ -556,10 +549,6 @@ const { width } = Dimensions.get("window");
 const isSmallScreen = width < 768;
 
 const styles = StyleSheet.create({
-  // --- DELETED: Header styles are moved to components/Header.tsx ---
-  // ... (header, headerNav, headerLogoContainer, etc. are gone) ...
-
-  // --- ADDED: Styles for the buttons passed to the header ---
   authButtonsContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -586,8 +575,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 14,
   },
-
-  // --- All other styles remain the same ---
   cameraControls: {
     position: "absolute",
     bottom: 0,
@@ -660,6 +647,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 8,
     gap: 8,
+  },
+  uploadBtnSpacing: {
+    marginBottom: isSmallScreen ? 12 : 0,
   },
   buttonPrimary: {
     backgroundColor: "#4F46E5",
