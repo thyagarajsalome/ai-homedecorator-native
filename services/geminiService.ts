@@ -3,7 +3,11 @@ import { supabase } from "../lib/supabase";
 
 // REPLACE THIS WITH YOUR ACTUAL DEPLOYED BACKEND URL (e.g. Cloud Run URL)
 // Do not use 'localhost' here because your phone cannot see your computer's localhost.
-const BACKEND_URL = "https://your-cloud-run-service-xyz.a.run.app";
+// services/geminiService.ts
+
+// ✅ CORRECT (Use YOUR specific URL)
+const BACKEND_URL =
+  "https://ai-decorator-backend-358218923651.asia-south1.run.app";
 
 export const decorateRoom = async (
   imageUri: string,
