@@ -12,10 +12,11 @@ import {
   Dimensions,
   Platform,
   Modal,
+  Linking, // <--- Added Linking here
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
-import { useFocusEffect } from "@react-navigation/native"; // Added for auto-refresh
+import { useFocusEffect } from "@react-navigation/native";
 import { Style } from "../types";
 import { ROOM_TYPES, STYLE_CATEGORIES } from "../constants";
 import * as geminiService from "../services/geminiService";
@@ -31,7 +32,7 @@ import {
 } from "../components/Icons";
 import { useAuth } from "../context/AuthContext";
 import Header from "../components/Header";
-import { supabase } from "../lib/supabase"; // Added Supabase import
+import { supabase } from "../lib/supabase";
 
 // Import Native Modules
 import * as ImagePicker from "expo-image-picker";
@@ -51,7 +52,7 @@ const CameraModal: React.FC<{
   const takePicture = async () => {
     if (cameraRef.current) {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.5, // Optimization: Small size for fast upload
+        quality: 0.5,
       });
       if (photo) {
         onPictureTaken(photo.uri);
@@ -102,7 +103,7 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
       mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.5, // Optimization: Small size for fast upload
+      quality: 0.5,
     });
 
     if (!result.canceled) {
@@ -268,36 +269,38 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     STYLE_CATEGORIES[0].name
   );
 
-  // Changed: Start with 0 credits and fetch real value
   const [credits, setCredits] = useState(0);
 
   const { session, logout } = useAuth();
 
-  // --- Supabase: Fetch Credits logic ---
-  const fetchCredits = async () => {
-    if (!session?.user) return;
-
-    try {
-      // Assuming your table is named 'profiles' or 'users' and has a 'credits' column
-      // Adjust table name if yours is different
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("credits")
-        .eq("id", session.user.id)
-        .single();
-
-      if (data) {
-        setCredits(data.credits);
-      }
-    } catch (err) {
-      console.log("Error fetching credits:", err);
-    }
-  };
-
-  // Refresh credits every time the screen is focused (e.g. after returning from background)
+  // --- Supabase: Fetch Credits Logic ---
   useFocusEffect(
     useCallback(() => {
+      let isActive = true; // Prevents setting state if screen unmounts
+
+      const fetchCredits = async () => {
+        if (!session?.user) return;
+
+        try {
+          const { data, error } = await supabase
+            .from("user_profiles") // Ensuring correct table
+            .select("generation_credits") // Ensuring correct column
+            .eq("id", session.user.id)
+            .single();
+
+          if (data && isActive) {
+            setCredits(data.generation_credits);
+          }
+        } catch (err) {
+          console.log("Error fetching credits:", err);
+        }
+      };
+
       fetchCredits();
+
+      return () => {
+        isActive = false;
+      };
     }, [session])
   );
 
@@ -316,8 +319,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setError(null);
     setDecorMode("style");
     setRoomType("");
-    // Refresh credits to ensure UI is in sync
-    fetchCredits();
   };
 
   const handleDecorate = async () => {
@@ -335,12 +336,19 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       return;
     }
 
-    // Updated Logic: Check Credits & Show Policy-Safe Alert
+    // --- UPDATED CREDIT CHECK ---
     if (credits < creditCost) {
       Alert.alert(
         "Insufficient Credits",
-        "You do not have enough credits to generate this design.\n\nPlease manage your plan on our website: aihomedecorator.com",
-        [{ text: "OK" }]
+        "You've used your free credits! Visit our website to get more.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Get Credits",
+            onPress: () =>
+              Linking.openURL("https://aihomedecorator.com/pricing"),
+          },
+        ]
       );
       return;
     }
@@ -349,7 +357,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      // This now calls your backend service (Cloud Run) via the updated geminiService
       const result = await geminiService.decorateRoom(
         sourceFileUri,
         decorationPrompt,
@@ -357,7 +364,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       );
       setGeneratedImageUrl(result);
 
-      // Optimistic update (real update happens on next fetch)
       setCredits((prev) => prev - creditCost);
     } catch (e: any) {
       setError(e.message || "An unknown error occurred.");

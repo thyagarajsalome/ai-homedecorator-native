@@ -1,7 +1,8 @@
-import * as FileSystem from "expo-file-system";
-import { supabase } from "../lib/supabase"; // We need this to get the JWT token
+// services/geminiService.ts
+import { supabase } from "../lib/supabase";
 
-// Your Cloud Run URL
+// REPLACE THIS WITH YOUR ACTUAL DEPLOYED BACKEND URL (e.g. Cloud Run URL)
+// Do not use 'localhost' here because your phone cannot see your computer's localhost.
 const BACKEND_URL = "https://your-cloud-run-service-xyz.a.run.app";
 
 export const decorateRoom = async (
@@ -10,7 +11,7 @@ export const decorateRoom = async (
   roomType?: string
 ): Promise<string> => {
   try {
-    // 1. Get the current User Token to authorize with your Backend
+    // 1. Get the current User Token
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -18,33 +19,44 @@ export const decorateRoom = async (
 
     if (!token) throw new Error("User not authenticated");
 
-    // 2. Read file as Base64
-    const base64 = await FileSystem.readAsStringAsync(imageUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+    // 2. Create FormData for file upload (Match Backend Expectation)
+    const formData = new FormData();
 
-    // 3. Call your Cloud Run Backend
+    // Append the image file
+    // React Native expects an object with uri, name, and type for files
+    formData.append("image", {
+      uri: imageUri,
+      name: "upload.jpg",
+      type: "image/jpeg",
+    } as any);
+
+    // Append text fields (Match keys expected by server.js)
+    formData.append("designPrompt", stylePrompt);
+    formData.append("roomType", roomType || "Room");
+    // Native app currently only does 'style' mode based on your UI,
+    // but we pass it to match backend logic.
+    formData.append("designMode", "style");
+    formData.append("roomDescription", roomType || "");
+
+    // 3. Call Backend
     const response = await fetch(`${BACKEND_URL}/api/decorate`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // Send token for verification
+        // Do NOT set Content-Type to multipart/form-data manually;
+        // fetch handles the boundary automatically.
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        image: `data:image/jpeg;base64,${base64}`, // Send standard data URI
-        prompt: stylePrompt,
-        roomType: roomType,
-      }),
+      body: formData,
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Backend processing failed");
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Backend error: ${response.status}`);
     }
 
     const result = await response.json();
 
-    // Assuming your backend returns { generatedImage: "base64..." }
+    // The backend returns { generatedImage: "data:image..." }
     return result.generatedImage;
   } catch (error) {
     console.error("Error in decorateRoom:", error);
