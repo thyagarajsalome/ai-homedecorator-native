@@ -12,7 +12,7 @@ import {
   Dimensions,
   Platform,
   Modal,
-  Linking, // <--- Added Linking here
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
@@ -166,8 +166,9 @@ const GeneratedImageDisplay: React.FC<{
 }> = ({ sourceImage, generatedImage, onReset }) => {
   const saveImageToFile = async (base64Data: string): Promise<string> => {
     const filename = FileSystem.cacheDirectory + `decorated-${Date.now()}.jpg`;
+    // --- FIX 1: Use string "base64" instead of FileSystem.EncodingType.Base64 ---
     await FileSystem.writeAsStringAsync(filename, base64Data, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: "base64",
     });
     return filename;
   };
@@ -273,18 +274,17 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const { session, logout } = useAuth();
 
-  // --- Supabase: Fetch Credits Logic ---
   useFocusEffect(
     useCallback(() => {
-      let isActive = true; // Prevents setting state if screen unmounts
+      let isActive = true;
 
       const fetchCredits = async () => {
         if (!session?.user) return;
 
         try {
           const { data, error } = await supabase
-            .from("user_profiles") // Ensuring correct table
-            .select("generation_credits") // Ensuring correct column
+            .from("user_profiles")
+            .select("generation_credits")
             .eq("id", session.user.id)
             .single();
 
@@ -336,7 +336,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       return;
     }
 
-    // --- UPDATED CREDIT CHECK ---
     if (credits < creditCost) {
       Alert.alert(
         "Insufficient Credits",
@@ -605,11 +604,11 @@ const styles = StyleSheet.create({
   authButtonsContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
+    gap: 12, // Reduced gap slightly
   },
   aboutButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 8,
   },
   aboutButtonText: {
@@ -617,16 +616,17 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
+  // --- FIX 2: Adjusted Logout Button Styles ---
   logoutButton: {
     backgroundColor: "#DC2626",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 6, // Reduced from 8
+    paddingHorizontal: 12, // Reduced from 16
+    borderRadius: 6, // Slightly tighter radius
   },
   logoutButtonText: {
     color: "white",
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: 12, // Reduced font size slightly to be proportionate
   },
   cameraControls: {
     position: "absolute",
