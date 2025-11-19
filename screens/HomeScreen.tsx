@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -12,10 +12,12 @@ import {
   Dimensions,
   Platform,
   Modal,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
-import { Style, StyleCategory } from "../types";
+import { useFocusEffect } from "@react-navigation/native";
+import { Style } from "../types";
 import { ROOM_TYPES, STYLE_CATEGORIES } from "../constants";
 import * as geminiService from "../services/geminiService";
 import Loader from "../components/Loader";
@@ -25,22 +27,20 @@ import {
   DownloadIcon,
   ShareIcon,
   ResetIcon,
-  LogoIcon,
   DecorateIcon,
   AccordionChevronIcon,
 } from "../components/Icons";
 import { useAuth } from "../context/AuthContext";
-
-// --- IMPORT: The new common Header ---
 import Header from "../components/Header";
+import { supabase } from "../lib/supabase";
 
 // Import Native Modules
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
-import { Camera, CameraView } from "expo-camera";
+import { CameraView, Camera } from "expo-camera";
 
-// --- DELETED: The old Header component definition is removed from here ---
+// --- Components ---
 
 const CameraModal: React.FC<{
   isVisible: boolean;
@@ -51,7 +51,9 @@ const CameraModal: React.FC<{
 
   const takePicture = async () => {
     if (cameraRef.current) {
-      const photo = await cameraRef.current.takePictureAsync();
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.5,
+      });
       if (photo) {
         onPictureTaken(photo.uri);
       }
@@ -100,7 +102,8 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
-      quality: 0.8,
+      aspect: [4, 3],
+      quality: 0.5,
     });
 
     if (!result.canceled) {
@@ -139,7 +142,7 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
       <View style={styles.uploaderButtonContainer}>
         <TouchableOpacity
           onPress={openImageGallery}
-          style={[styles.button, styles.buttonPrimary]}
+          style={[styles.button, styles.buttonPrimary, styles.uploadBtnSpacing]}
         >
           <UploadIcon style={styles.buttonIcon} />
           <Text style={styles.buttonText}>Upload Image</Text>
@@ -163,8 +166,9 @@ const GeneratedImageDisplay: React.FC<{
 }> = ({ sourceImage, generatedImage, onReset }) => {
   const saveImageToFile = async (base64Data: string): Promise<string> => {
     const filename = FileSystem.cacheDirectory + `decorated-${Date.now()}.jpg`;
+    // --- FIX 1: Use string "base64" instead of FileSystem.EncodingType.Base64 ---
     await FileSystem.writeAsStringAsync(filename, base64Data, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: "base64",
     });
     return filename;
   };
@@ -248,6 +252,8 @@ const GeneratedImageDisplay: React.FC<{
   );
 };
 
+// --- Main Screen ---
+
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [sourceFileUri, setSourceFileUri] = useState<string | null>(null);
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
@@ -258,15 +264,45 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [roomType, setRoomType] = useState<string>("");
   const [selectedStyle, setSelectedStyle] = useState<Style | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [loadingMessage, setLoadingMessage] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [decorMode, setDecorMode] = useState<"style" | "custom">("style");
   const [activeAccordion, setActiveAccordion] = useState<string | null>(
     STYLE_CATEGORIES[0].name
   );
-  const [credits, setCredits] = useState(119);
 
-  const { logout } = useAuth();
+  const [credits, setCredits] = useState(0);
+
+  const { session, logout } = useAuth();
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const fetchCredits = async () => {
+        if (!session?.user) return;
+
+        try {
+          const { data, error } = await supabase
+            .from("user_profiles")
+            .select("generation_credits")
+            .eq("id", session.user.id)
+            .single();
+
+          if (data && isActive) {
+            setCredits(data.generation_credits);
+          }
+        } catch (err) {
+          console.log("Error fetching credits:", err);
+        }
+      };
+
+      fetchCredits();
+
+      return () => {
+        isActive = false;
+      };
+    }, [session])
+  );
 
   const handleImageSelect = (uri: string) => {
     setSourceFileUri(uri);
@@ -299,14 +335,25 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setError("Please select a style or enter a custom design.");
       return;
     }
+
     if (credits < creditCost) {
-      setError("Not enough credits to perform this action.");
+      Alert.alert(
+        "Insufficient Credits",
+        "You've used your free credits! Visit our website to get more.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Get Credits",
+            onPress: () =>
+              Linking.openURL("https://aihomedecorator.com/pricing"),
+          },
+        ]
+      );
       return;
     }
 
     setError(null);
     setIsLoading(true);
-    setLoadingMessage("Redecorating your space...");
 
     try {
       const result = await geminiService.decorateRoom(
@@ -315,12 +362,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         roomType
       );
       setGeneratedImageUrl(result);
+
       setCredits((prev) => prev - creditCost);
     } catch (e: any) {
       setError(e.message || "An unknown error occurred.");
     } finally {
       setIsLoading(false);
-      setLoadingMessage("");
     }
   };
 
@@ -519,13 +566,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   return (
-    // --- MODIFIED: Use `edges` prop to avoid top padding ---
     <SafeAreaView
       style={styles.appContainer}
       edges={["bottom", "left", "right"]}
     >
-      {isLoading && <Loader message={loadingMessage} />}
-      {/* --- MODIFIED: Use new Header and pass buttons as children --- */}
+      {isLoading && <Loader />}
       <Header>
         <View style={styles.authButtonsContainer}>
           <TouchableOpacity
@@ -556,18 +601,14 @@ const { width } = Dimensions.get("window");
 const isSmallScreen = width < 768;
 
 const styles = StyleSheet.create({
-  // --- DELETED: Header styles are moved to components/Header.tsx ---
-  // ... (header, headerNav, headerLogoContainer, etc. are gone) ...
-
-  // --- ADDED: Styles for the buttons passed to the header ---
   authButtonsContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
+    gap: 12, // Reduced gap slightly
   },
   aboutButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 8,
   },
   aboutButtonText: {
@@ -575,19 +616,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
+  // --- FIX 2: Adjusted Logout Button Styles ---
   logoutButton: {
     backgroundColor: "#DC2626",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 6, // Reduced from 8
+    paddingHorizontal: 12, // Reduced from 16
+    borderRadius: 6, // Slightly tighter radius
   },
   logoutButtonText: {
     color: "white",
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: 12, // Reduced font size slightly to be proportionate
   },
-
-  // --- All other styles remain the same ---
   cameraControls: {
     position: "absolute",
     bottom: 0,
@@ -660,6 +700,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 8,
     gap: 8,
+  },
+  uploadBtnSpacing: {
+    marginBottom: isSmallScreen ? 12 : 0,
   },
   buttonPrimary: {
     backgroundColor: "#4F46E5",

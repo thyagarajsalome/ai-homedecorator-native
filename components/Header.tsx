@@ -1,5 +1,6 @@
 import React, { ReactNode } from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LogoIcon } from "./Icons";
 
 type HeaderProps = {
@@ -7,8 +8,11 @@ type HeaderProps = {
 };
 
 const Header: React.FC<HeaderProps> = ({ children }) => {
+  // Get the safe area insets (this handles the notch/status bar height dynamically)
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top }]}>
       <View style={styles.headerNav}>
         <View style={styles.headerLogoContainer}>
           <LogoIcon />
@@ -28,11 +32,10 @@ const Header: React.FC<HeaderProps> = ({ children }) => {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "rgba(17, 24, 39, 0.8)",
+    backgroundColor: "rgba(17, 24, 39, 0.95)", // Slightly higher opacity for better readability
     borderBottomWidth: 1,
     borderBottomColor: "#374151",
-    // This ensures header is inside safe area padding on iOS
-    paddingTop: 0,
+    // Padding top is handled dynamically via insets in the component
   },
   headerNav: {
     flexDirection: "row",

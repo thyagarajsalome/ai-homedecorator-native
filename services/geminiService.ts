@@ -1,49 +1,13 @@
-import { GoogleGenAI, Modality } from "@google/genai";
-// --- FIX: Import from legacy API ---
-import * as FileSystem from "expo-file-system/legacy";
-import { GEMINI_API_KEY } from "@env";
+// services/geminiService.ts
+import { supabase } from "../lib/supabase";
 
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY as string });
+// REPLACE THIS WITH YOUR ACTUAL DEPLOYED BACKEND URL (e.g. Cloud Run URL)
+// Do not use 'localhost' here because your phone cannot see your computer's localhost.
+// services/geminiService.ts
 
-export const fileToBase64 = async (
-  fileUri: string
-): Promise<{ mimeType: string; data: string }> => {
-  try {
-    console.log("Reading file from URI:", fileUri);
-
-    // Now using the legacy API, EncodingType should be available
-    const data = await FileSystem.readAsStringAsync(fileUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    console.log("Successfully read file, data length:", data.length);
-
-    // Infer MIME type from extension
-    const extension = fileUri.split(".").pop()?.toLowerCase();
-    let mimeType = "image/jpeg"; // default
-    if (extension === "png") {
-      mimeType = "image/png";
-    }
-
-    return { mimeType, data };
-  } catch (error) {
-    console.error("=== ERROR IN fileToBase64 ===");
-    console.error("Error details:", error);
-    console.error("Error message:", (error as Error).message);
-    console.error("Error stack:", (error as Error).stack);
-    throw new Error(
-      "Failed to process image file: " + (error as Error).message
-    );
-  }
-};
-
-const getBase64FromResponse = (response: any): string | null => {
-  const part = response?.candidates?.[0]?.content?.parts?.[0];
-  if (part?.inlineData?.data) {
-    return part.inlineData.data;
-  }
-  return null;
-};
+// ✅ CORRECT (Use YOUR specific URL)
+const BACKEND_URL =
+  "https://ai-decorator-backend-358218923651.asia-south1.run.app";
 
 export const decorateRoom = async (
   imageUri: string,
@@ -51,47 +15,55 @@ export const decorateRoom = async (
   roomType?: string
 ): Promise<string> => {
   try {
-    console.log("Starting decoration process...");
-    console.log("Image URI:", imageUri);
-    console.log("Style prompt:", stylePrompt);
-    console.log("Room type:", roomType);
+    // 1. Get the current User Token
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const token = session?.access_token;
 
-    const { mimeType, data } = await fileToBase64(imageUri);
+    if (!token) throw new Error("User not authenticated");
 
-    console.log("Image converted to base64, mimeType:", mimeType);
-    console.log("Base64 data length:", data.length);
+    // 2. Create FormData for file upload (Match Backend Expectation)
+    const formData = new FormData();
 
-    const fullPrompt = `Redecorate this ${
-      roomType ? roomType.toLowerCase() : "room"
-    } in ${stylePrompt}. Maintain the original room structure and layout but change the furniture, wall color, and decorations to match the new style.`;
+    // Append the image file
+    // React Native expects an object with uri, name, and type for files
+    formData.append("image", {
+      uri: imageUri,
+      name: "upload.jpg",
+      type: "image/jpeg",
+    } as any);
 
-    console.log("Sending request to Gemini API...");
-    console.log("Full prompt:", fullPrompt);
+    // Append text fields (Match keys expected by server.js)
+    formData.append("designPrompt", stylePrompt);
+    formData.append("roomType", roomType || "Room");
+    // Native app currently only does 'style' mode based on your UI,
+    // but we pass it to match backend logic.
+    formData.append("designMode", "style");
+    formData.append("roomDescription", roomType || "");
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
-      contents: {
-        parts: [{ inlineData: { data, mimeType } }, { text: fullPrompt }],
+    // 3. Call Backend
+    const response = await fetch(`${BACKEND_URL}/api/decorate`, {
+      method: "POST",
+      headers: {
+        // Do NOT set Content-Type to multipart/form-data manually;
+        // fetch handles the boundary automatically.
+        Authorization: `Bearer ${token}`,
       },
-      config: {
-        responseModalities: [Modality.IMAGE],
-      },
+      body: formData,
     });
 
-    console.log("Received response from Gemini API");
-
-    const base64Image = getBase64FromResponse(response);
-    if (!base64Image) {
-      console.error("No image data in response");
-      throw new Error("API did not return an image.");
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Backend error: ${response.status}`);
     }
 
-    console.log("Successfully extracted image from response");
-    return `data:image/jpeg;base64,${base64Image}`;
+    const result = await response.json();
+
+    // The backend returns { generatedImage: "data:image..." }
+    return result.generatedImage;
   } catch (error) {
-    console.error("=== ERROR IN decorateRoom ===");
-    console.error("Error details:", error);
-    console.error("Error message:", (error as Error).message);
-    throw new Error("Failed to decorate the room: " + (error as Error).message);
+    console.error("Error in decorateRoom:", error);
+    throw error;
   }
 };

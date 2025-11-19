@@ -5,24 +5,45 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
-  ScrollView, // --- ADDED: ScrollView for smaller screens ---
+  ScrollView,
+  Alert, // Added Alert
 } from "react-native";
+// Removed SafeAreaView from react-native
+import { SafeAreaView } from "react-native-safe-area-context"; // Added correct SafeAreaView
 import { useAuth } from "../context/AuthContext";
 import { LogoIcon } from "../components/Icons";
 import Header from "../components/Header";
+import { supabase } from "../lib/supabase"; // Added Supabase import
 
 const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login } = useAuth();
+  const [loading, setLoading] = useState(false); // Added loading state
+  // We don't need to call login() from context manually if we use supabase directly here,
+  // the AuthContext listener will handle the state change automatically.
 
-  const handleLogin = () => {
-    // FIXME: Add real login validation
-    if (email && password) {
-      login();
-    } else {
-      alert("Please enter email and password");
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) {
+        Alert.alert("Login Error", error.message);
+      }
+      // No need to navigate manually; the AuthContext listener in RootNavigator
+      // will detect the session change and switch to the App Stack.
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "An unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -32,7 +53,6 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       edges={["bottom", "left", "right"]}
     >
       <Header />
-      {/* --- MODIFIED: Use ScrollView to prevent overflow --- */}
       <ScrollView contentContainerStyle={styles.container}>
         <LogoIcon style={{ width: 60, height: 60, marginBottom: 20 }} />
         <Text style={styles.title}>Welcome Back</Text>
@@ -56,8 +76,14 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           secureTextEntry
         />
 
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Login</Text>
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Logging in..." : "Login"}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate("SignUp")}>
@@ -66,7 +92,6 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </Text>
         </TouchableOpacity>
 
-        {/* --- ADDED: Legal links --- */}
         <View style={styles.legalContainer}>
           <Text style={styles.legalText}>By logging in, you agree to our</Text>
           <View style={styles.legalLinks}>
@@ -90,11 +115,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#111827",
   },
   container: {
-    flexGrow: 1, // --- MODIFIED: Use flexGrow for ScrollView ---
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingVertical: 20, // --- ADDED: Padding for ScrollView ---
+    paddingVertical: 20,
   },
   title: {
     fontSize: 28,
@@ -126,6 +151,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 24,
   },
+  buttonDisabled: {
+    backgroundColor: "#374151",
+    opacity: 0.7,
+  },
   buttonText: {
     color: "white",
     fontWeight: "600",
@@ -139,7 +168,6 @@ const styles = StyleSheet.create({
     color: "#C084FC",
     fontWeight: "bold",
   },
-  // --- ADDED: Styles for legal links ---
   legalContainer: {
     marginTop: 48,
     alignItems: "center",
