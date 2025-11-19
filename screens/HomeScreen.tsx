@@ -37,7 +37,8 @@ import { supabase } from "../lib/supabase";
 // Import Native Modules
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
-import * as FileSystem from "expo-file-system";
+// --- FIX 1: Use the legacy import for writeAsStringAsync in SDK 54 ---
+import * as FileSystem from "expo-file-system/legacy";
 import { CameraView, Camera } from "expo-camera";
 
 // --- Components ---
@@ -166,7 +167,7 @@ const GeneratedImageDisplay: React.FC<{
 }> = ({ sourceImage, generatedImage, onReset }) => {
   const saveImageToFile = async (base64Data: string): Promise<string> => {
     const filename = FileSystem.cacheDirectory + `decorated-${Date.now()}.jpg`;
-    // --- FIX 1: Use string "base64" instead of FileSystem.EncodingType.Base64 ---
+    // --- FIX 2: Use string "base64" directly to avoid undefined enum error ---
     await FileSystem.writeAsStringAsync(filename, base64Data, {
       encoding: "base64",
     });
@@ -616,17 +617,17 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
-  // --- FIX 2: Adjusted Logout Button Styles ---
+  // --- FIX 3: Adjusted Logout Button Styles for better proportion ---
   logoutButton: {
     backgroundColor: "#DC2626",
-    paddingVertical: 6, // Reduced from 8
-    paddingHorizontal: 12, // Reduced from 16
-    borderRadius: 6, // Slightly tighter radius
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
   },
   logoutButtonText: {
     color: "white",
     fontWeight: "bold",
-    fontSize: 12, // Reduced font size slightly to be proportionate
+    fontSize: 12,
   },
   cameraControls: {
     position: "absolute",
