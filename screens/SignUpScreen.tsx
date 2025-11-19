@@ -5,24 +5,47 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
-  ScrollView, // --- ADDED: ScrollView for smaller screens ---
+  ScrollView,
+  Alert, // Added Alert
 } from "react-native";
+// Removed SafeAreaView from react-native
+import { SafeAreaView } from "react-native-safe-area-context"; // Added correct SafeAreaView
 import { useAuth } from "../context/AuthContext";
 import { LogoIcon } from "../components/Icons";
 import Header from "../components/Header";
+import { supabase } from "../lib/supabase"; // Added Supabase import
 
 const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login } = useAuth(); // Using login for simplicity
+  const [loading, setLoading] = useState(false); // Added loading state
 
-  const handleSignUp = () => {
-    // FIXME: Add real sign-up logic
-    if (email && password) {
-      login();
-    } else {
-      alert("Please enter email and password");
+  const handleSignUp = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+      });
+
+      if (error) {
+        Alert.alert("Sign Up Error", error.message);
+      } else {
+        Alert.alert(
+          "Success",
+          "Account created! Please check your email to verify your account, then log in.",
+          [{ text: "OK", onPress: () => navigation.navigate("Login") }]
+        );
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "An unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -32,7 +55,6 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       edges={["bottom", "left", "right"]}
     >
       <Header />
-      {/* --- MODIFIED: Use ScrollView to prevent overflow --- */}
       <ScrollView contentContainerStyle={styles.container}>
         <LogoIcon style={{ width: 60, height: 60, marginBottom: 20 }} />
         <Text style={styles.title}>Create Account</Text>
@@ -56,8 +78,14 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           secureTextEntry
         />
 
-        <TouchableOpacity style={styles.button} onPress={handleSignUp}>
-          <Text style={styles.buttonText}>Sign Up</Text>
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleSignUp}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Creating Account..." : "Sign Up"}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate("Login")}>
@@ -66,7 +94,6 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </Text>
         </TouchableOpacity>
 
-        {/* --- ADDED: Legal links --- */}
         <View style={styles.legalContainer}>
           <Text style={styles.legalText}>By signing up, you agree to our</Text>
           <View style={styles.legalLinks}>
@@ -90,11 +117,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#111827",
   },
   container: {
-    flexGrow: 1, // --- MODIFIED: Use flexGrow for ScrollView ---
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingVertical: 20, // --- ADDED: Padding for ScrollView ---
+    paddingVertical: 20,
   },
   title: {
     fontSize: 28,
@@ -126,6 +153,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 24,
   },
+  buttonDisabled: {
+    backgroundColor: "#374151",
+    opacity: 0.7,
+  },
   buttonText: {
     color: "white",
     fontWeight: "600",
@@ -139,7 +170,6 @@ const styles = StyleSheet.create({
     color: "#C084FC",
     fontWeight: "bold",
   },
-  // --- ADDED: Styles for legal links ---
   legalContainer: {
     marginTop: 48,
     alignItems: "center",
