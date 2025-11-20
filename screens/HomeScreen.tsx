@@ -37,9 +37,10 @@ import { supabase } from "../lib/supabase";
 // Import Native Modules
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
-// --- FIX 1: Use the legacy import for writeAsStringAsync in SDK 54 ---
 import * as FileSystem from "expo-file-system/legacy";
 import { CameraView, Camera } from "expo-camera";
+
+const { width } = Dimensions.get("window");
 
 // --- Components ---
 
@@ -160,6 +161,51 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
   );
 };
 
+// --- Updated Inspiration Gallery Images ---
+const INSPIRATION_IMAGES = [
+  {
+    id: "1",
+    uri: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=500&auto=format&fit=crop",
+    label: "Living Room",
+  },
+  {
+    id: "2",
+    uri: "https://images.unsplash.com/photo-1616594039964-40891a9a3c47?q=80&w=500&auto=format&fit=crop",
+    label: "Bedroom",
+  },
+  {
+    id: "3",
+    uri: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=500&auto=format&fit=crop",
+    label: "Kitchen",
+  },
+  {
+    id: "4",
+    uri: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=500&auto=format&fit=crop",
+    label: "Bathroom",
+  },
+];
+
+const InspirationGallery: React.FC = () => {
+  return (
+    <View style={styles.galleryContainer}>
+      <Text style={styles.galleryTitle}>Inspiration Gallery</Text>
+      <View style={styles.galleryGrid}>
+        {INSPIRATION_IMAGES.map((item) => (
+          <View key={item.id} style={styles.galleryItem}>
+            <Image source={{ uri: item.uri }} style={styles.galleryImage} />
+            <View style={styles.galleryLabelContainer}>
+              <Text style={styles.galleryLabel}>{item.label}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+      <Text style={styles.galleryHint}>
+        Upload your own photo to see these styles in your space!
+      </Text>
+    </View>
+  );
+};
+
 const GeneratedImageDisplay: React.FC<{
   sourceImage: string;
   generatedImage: string;
@@ -167,7 +213,6 @@ const GeneratedImageDisplay: React.FC<{
 }> = ({ sourceImage, generatedImage, onReset }) => {
   const saveImageToFile = async (base64Data: string): Promise<string> => {
     const filename = FileSystem.cacheDirectory + `decorated-${Date.now()}.jpg`;
-    // --- FIX 2: Use string "base64" directly to avoid undefined enum error ---
     await FileSystem.writeAsStringAsync(filename, base64Data, {
       encoding: "base64",
     });
@@ -275,6 +320,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const { session, logout } = useAuth();
 
+  // Fetch credits logic
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -337,16 +383,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       return;
     }
 
+    // --- UPDATED CREDIT LOGIC ---
     if (credits < creditCost) {
       Alert.alert(
-        "Insufficient Credits",
-        "You've used your free credits! Visit our website to get more.",
+        "Out of Credits",
+        "You need more credits to continue decorating.",
         [
           { text: "Cancel", style: "cancel" },
           {
-            text: "Get Credits",
-            onPress: () =>
-              Linking.openURL("https://aihomedecorator.com/pricing"),
+            text: "Get More Credits",
+            onPress: () => Linking.openURL("https://aihomedecorator.com/"),
           },
         ]
       );
@@ -364,9 +410,24 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       );
       setGeneratedImageUrl(result);
 
-      setCredits((prev) => prev - creditCost);
+      // Optimistically update credits
+      setCredits((prev) => Math.max(0, prev - creditCost));
     } catch (e: any) {
-      setError(e.message || "An unknown error occurred.");
+      // Handle specific token errors
+      const errorMessage = e.message || "An unknown error occurred.";
+      if (
+        errorMessage.includes("Invalid or expired token") ||
+        errorMessage.includes("JWT")
+      ) {
+        Alert.alert(
+          "Session Expired",
+          "Please log out and log back in to refresh your session.",
+          [{ text: "Logout", onPress: logout }]
+        );
+        setError("Session expired. Please login again.");
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -387,8 +448,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
     if (!sourceImageUrl) {
       return (
-        <View style={styles.uploaderArea}>
-          <ImageUploader onImageSelected={handleImageSelect} />
+        <View>
+          <View style={styles.uploaderArea}>
+            <ImageUploader onImageSelected={handleImageSelect} />
+          </View>
+          {/* Inspiration Gallery only shows when no image is selected */}
+          <InspirationGallery />
         </View>
       );
     }
@@ -598,14 +663,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 };
 
 // --- STYLES ---
-const { width } = Dimensions.get("window");
 const isSmallScreen = width < 768;
 
 const styles = StyleSheet.create({
+  // ... Existing styles ...
   authButtonsContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12, // Reduced gap slightly
+    gap: 12,
   },
   aboutButton: {
     paddingVertical: 6,
@@ -617,7 +682,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
-  // --- FIX 3: Adjusted Logout Button Styles for better proportion ---
   logoutButton: {
     backgroundColor: "#DC2626",
     paddingVertical: 6,
@@ -664,7 +728,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   uploaderArea: {
-    marginTop: 48,
+    marginTop: 32,
   },
   uploaderContainer: {
     maxWidth: 600,
@@ -720,6 +784,59 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     color: "white",
+  },
+  // Gallery Styles
+  galleryContainer: {
+    marginTop: 32,
+    maxWidth: 600,
+    alignSelf: "center",
+    width: "100%",
+  },
+  galleryTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "white",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  galleryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  galleryItem: {
+    width: "48%", // 2 columns
+    aspectRatio: 1,
+    backgroundColor: "#374151",
+    borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+  },
+  galleryImage: {
+    width: "100%",
+    height: "100%",
+    opacity: 0.8,
+  },
+  galleryLabelContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    padding: 8,
+  },
+  galleryLabel: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  galleryHint: {
+    color: "#9CA3AF",
+    textAlign: "center",
+    marginTop: 16,
+    fontStyle: "italic",
   },
   displayContainer: {
     maxWidth: 1024,
