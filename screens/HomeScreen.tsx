@@ -97,7 +97,7 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
       return;
     }
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, // FIXED: Correct Enum usage
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.5,
@@ -154,25 +154,26 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
   );
 };
 
+// --- FIXED: Use Local Images with require() ---
 const INSPIRATION_IMAGES = [
   {
     id: "1",
-    uri: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=500&auto=format&fit=crop",
+    image: require("../assets/images/inspiration/living-room.jpg"),
     label: "Living Room",
   },
   {
     id: "2",
-    uri: "https://images.unsplash.com/photo-1616594039964-40891a9a3c47?q=80&w=500&auto=format&fit=crop",
+    image: require("../assets/images/inspiration/bedroom.jpg"),
     label: "Bedroom",
   },
   {
     id: "3",
-    uri: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=500&auto=format&fit=crop",
+    image: require("../assets/images/inspiration/kitchen.jpg"),
     label: "Kitchen",
   },
   {
     id: "4",
-    uri: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=500&auto=format&fit=crop",
+    image: require("../assets/images/inspiration/bathroom.jpg"),
     label: "Bathroom",
   },
 ];
@@ -187,7 +188,8 @@ const InspirationGallery: React.FC = () => {
       <View style={styles.galleryGrid}>
         {INSPIRATION_IMAGES.map((item) => (
           <View key={item.id} style={styles.galleryCard}>
-            <Image source={{ uri: item.uri }} style={styles.galleryImg} />
+            {/* FIXED: Use item.image directly for require() */}
+            <Image source={item.image} style={styles.galleryImg} />
             <View style={styles.galleryOverlay}>
               <Text style={styles.galleryLabel}>{item.label}</Text>
             </View>
@@ -342,17 +344,30 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const handleDecorate = async () => {
     if (!sourceFileUri) {
-      setError("Please upload an image first.");
+      Alert.alert("Action Required", "Please upload an image first.");
       return;
     }
+
+    if (!roomType) {
+      Alert.alert(
+        "Action Required",
+        "Please select a Room Type (e.g., Living Room) to continue."
+      );
+      return;
+    }
+
     const decorationPrompt =
       decorMode === "style" ? selectedStyle?.prompt : customPrompt;
     const creditCost = decorMode === "style" ? 1 : 3;
 
     if (!decorationPrompt) {
-      setError("Please select a style or enter a custom design.");
+      Alert.alert(
+        "Action Required",
+        "Please select a style or enter a custom design description."
+      );
       return;
     }
+
     if (credits < creditCost) {
       Alert.alert(
         "Out of Credits",
@@ -596,19 +611,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             {/* Floating Action Footer */}
             <View style={styles.generateSection}>
               <TouchableOpacity
-                style={[
-                  styles.generateBtn,
-                  (!roomType ||
-                    (decorMode === "style" && !selectedStyle) ||
-                    (decorMode === "custom" && !customPrompt)) &&
-                    styles.generateBtnDisabled,
-                ]}
+                style={styles.generateBtn}
                 onPress={handleDecorate}
-                disabled={
-                  !roomType ||
-                  (decorMode === "style" && !selectedStyle) ||
-                  (decorMode === "custom" && !customPrompt)
-                }
               >
                 <DecorateIcon style={{ color: "white", marginRight: 8 }} />
                 <Text style={styles.generateBtnText}>Generate Design</Text>
