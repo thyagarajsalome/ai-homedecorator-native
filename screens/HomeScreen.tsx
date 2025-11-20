@@ -154,8 +154,6 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
   );
 };
 
-// --- IMAGES ---
-// Ensure these files exist in assets/images/inspiration/
 const INSPIRATION_IMAGES = [
   {
     id: "1",
