@@ -34,12 +34,13 @@ import { useAuth } from "../context/AuthContext";
 import Header from "../components/Header";
 import { supabase } from "../lib/supabase";
 
-// Import Native Modules
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
-// --- FIX 1: Use the legacy import for writeAsStringAsync in SDK 54 ---
 import * as FileSystem from "expo-file-system/legacy";
 import { CameraView, Camera } from "expo-camera";
+
+const { width } = Dimensions.get("window");
+const isSmallScreen = width < 768;
 
 // --- Components ---
 
@@ -52,12 +53,8 @@ const CameraModal: React.FC<{
 
   const takePicture = async () => {
     if (cameraRef.current) {
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.5,
-      });
-      if (photo) {
-        onPictureTaken(photo.uri);
-      }
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5 });
+      if (photo) onPictureTaken(photo.uri);
     }
   };
 
@@ -68,18 +65,21 @@ const CameraModal: React.FC<{
       visible={isVisible}
       onRequestClose={onClose}
     >
-      <View style={{ flex: 1, backgroundColor: "black" }}>
+      <View style={{ flex: 1, backgroundColor: "#000" }}>
         <CameraView style={{ flex: 1 }} facing="back" ref={cameraRef} />
-        <View style={styles.cameraControls}>
-          <TouchableOpacity onPress={onClose} style={styles.cameraButton}>
-            <Text style={styles.cameraButtonText}>Cancel</Text>
+        <SafeAreaView style={styles.cameraOverlay}>
+          <TouchableOpacity onPress={onClose} style={styles.cameraCloseBtn}>
+            <Text style={styles.cameraCloseText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={takePicture}
-            style={styles.cameraButtonCapture}
-          />
-          <View style={{ width: 80 }} />
-        </View>
+          <View style={styles.cameraBottomBar}>
+            <TouchableOpacity
+              onPress={takePicture}
+              style={styles.shutterButton}
+            >
+              <View style={styles.shutterInner} />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </View>
     </Modal>
   );
@@ -93,32 +93,22 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
   const openImageGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Permission needed",
-        "Sorry, we need camera roll permissions to make this work!"
-      );
+      Alert.alert("Permission needed", "We need access to your photos!");
       return;
     }
-
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.5,
     });
-
-    if (!result.canceled) {
-      onImageSelected(result.assets[0].uri);
-    }
+    if (!result.canceled) onImageSelected(result.assets[0].uri);
   };
 
   const openCamera = async () => {
     const { status } = await Camera.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Permission needed",
-        "Sorry, we need camera permissions to make this work!"
-      );
+      Alert.alert("Permission needed", "We need access to your camera!");
       return;
     }
     setIsCameraOpen(true);
@@ -130,31 +120,79 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
   };
 
   return (
-    <View style={styles.uploaderContainer}>
+    <View style={styles.uploadCard}>
       <CameraModal
         isVisible={isCameraOpen}
         onClose={() => setIsCameraOpen(false)}
         onPictureTaken={onPictureTaken}
       />
-      <Text style={styles.uploaderTitle}>Upload Your Space</Text>
-      <Text style={styles.uploaderSubtitle}>
-        Start by uploading a photo or taking one.
+      <View style={styles.uploadIconContainer}>
+        <UploadIcon style={{ width: 40, height: 40, color: "#818CF8" }} />
+      </View>
+      <Text style={styles.uploadTitle}>Start Your Design</Text>
+      <Text style={styles.uploadSubtitle}>
+        Upload a photo of your room or take a new one to get started.
       </Text>
-      <View style={styles.uploaderButtonContainer}>
+
+      <View style={styles.uploadActions}>
         <TouchableOpacity
           onPress={openImageGallery}
-          style={[styles.button, styles.buttonPrimary, styles.uploadBtnSpacing]}
+          style={[styles.actionButton, styles.primaryButton]}
         >
-          <UploadIcon style={styles.buttonIcon} />
-          <Text style={styles.buttonText}>Upload Image</Text>
+          <UploadIcon style={styles.btnIcon} />
+          <Text style={styles.btnText}>Upload Photo</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={openCamera}
-          style={[styles.button, styles.buttonSecondary]}
+          style={[styles.actionButton, styles.secondaryButton]}
         >
-          <CameraIcon style={styles.buttonIcon} />
-          <Text style={styles.buttonText}>Take Photo</Text>
+          <CameraIcon style={styles.btnIcon} />
+          <Text style={styles.btnText}>Use Camera</Text>
         </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+const INSPIRATION_IMAGES = [
+  {
+    id: "1",
+    image: require("../assets/images/inspiration/living-room.jpg"),
+    label: "Living Room",
+  },
+  {
+    id: "2",
+    image: require("../assets/images/inspiration/bedroom.jpg"),
+    label: "Bedroom",
+  },
+  {
+    id: "3",
+    image: require("../assets/images/inspiration/kitchen.jpg"),
+    label: "Kitchen",
+  },
+  {
+    id: "4",
+    image: require("../assets/images/inspiration/bathroom.jpg"),
+    label: "Bathroom",
+  },
+];
+
+const InspirationGallery: React.FC = () => {
+  return (
+    <View style={styles.gallerySection}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Get Inspired</Text>
+        <Text style={styles.sectionSubtitle}>See what's possible</Text>
+      </View>
+      <View style={styles.galleryGrid}>
+        {INSPIRATION_IMAGES.map((item) => (
+          <View key={item.id} style={styles.galleryCard}>
+            <Image source={item.image} style={styles.galleryImg} />
+            <View style={styles.galleryOverlay}>
+              <Text style={styles.galleryLabel}>{item.label}</Text>
+            </View>
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -167,7 +205,6 @@ const GeneratedImageDisplay: React.FC<{
 }> = ({ sourceImage, generatedImage, onReset }) => {
   const saveImageToFile = async (base64Data: string): Promise<string> => {
     const filename = FileSystem.cacheDirectory + `decorated-${Date.now()}.jpg`;
-    // --- FIX 2: Use string "base64" directly to avoid undefined enum error ---
     await FileSystem.writeAsStringAsync(filename, base64Data, {
       encoding: "base64",
     });
@@ -178,23 +215,14 @@ const GeneratedImageDisplay: React.FC<{
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Permission needed",
-          "We need permission to save photos to your gallery."
-        );
+        Alert.alert("Permission needed", "We need permission to save photos.");
         return;
       }
-
       const base64Data = generatedImage.split(",")[1];
       const fileUri = await saveImageToFile(base64Data);
-
       await MediaLibrary.saveToLibraryAsync(fileUri);
-      Alert.alert(
-        "Saved!",
-        "Your new room has been saved to your photo gallery."
-      );
+      Alert.alert("Saved!", "Your new design has been saved to your gallery.");
     } catch (error) {
-      console.error(error);
       Alert.alert("Error", "Failed to save image.");
     }
   };
@@ -203,57 +231,56 @@ const GeneratedImageDisplay: React.FC<{
     try {
       const base64Data = generatedImage.split(",")[1];
       const fileUri = await saveImageToFile(base64Data);
-
-      await Share.share({
-        title: "Check out my AI-decorated room!",
-        url: fileUri,
-      });
+      await Share.share({ title: "My AI Room Design", url: fileUri });
     } catch (error: any) {
       Alert.alert("Error", error.message);
     }
   };
 
   return (
-    <View style={styles.displayContainer}>
-      <Text style={styles.displayTitle}>Your Redecorated Room!</Text>
-      <View style={styles.displayGrid}>
-        <View style={styles.displayColumn}>
-          <Text style={styles.displaySubtitle}>Original</Text>
-          <Image source={{ uri: sourceImage }} style={styles.displayImage} />
+    <View style={styles.resultContainer}>
+      <Text style={styles.resultHeader}>Your New Space</Text>
+      <View style={styles.imageComparison}>
+        <View style={styles.imageWrapper}>
+          <View style={styles.imageBadge}>
+            <Text style={styles.badgeText}>Original</Text>
+          </View>
+          <Image source={{ uri: sourceImage }} style={styles.resultImg} />
         </View>
-        <View style={styles.displayColumn}>
-          <Text style={styles.displaySubtitle}>Generated</Text>
-          <Image source={{ uri: generatedImage }} style={styles.displayImage} />
+        <View style={styles.imageWrapper}>
+          <View style={[styles.imageBadge, { backgroundColor: "#6366F1" }]}>
+            <Text style={styles.badgeText}>AI Design</Text>
+          </View>
+          <Image source={{ uri: generatedImage }} style={styles.resultImg} />
         </View>
       </View>
-      <View style={styles.displayActions}>
+
+      <View style={styles.resultActions}>
         <TouchableOpacity
           onPress={onReset}
-          style={[styles.button, styles.buttonSecondary]}
+          style={[styles.actionButton, styles.secondaryButton]}
         >
-          <ResetIcon style={styles.buttonIcon} />
-          <Text style={styles.buttonText}>Start Over</Text>
+          <ResetIcon style={styles.btnIcon} />
+          <Text style={styles.btnText}>Start Over</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleDownload}
-          style={[styles.button, styles.buttonPrimary]}
+          style={[styles.actionButton, styles.primaryButton]}
         >
-          <DownloadIcon style={styles.buttonIcon} />
-          <Text style={styles.buttonText}>Download</Text>
+          <DownloadIcon style={styles.btnIcon} />
+          <Text style={styles.btnText}>Save</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleShare}
-          style={[styles.button, styles.buttonPurple]}
+          style={[styles.actionButton, styles.accentButton]}
         >
-          <ShareIcon style={styles.buttonIcon} />
-          <Text style={styles.buttonText}>Share</Text>
+          <ShareIcon style={styles.btnIcon} />
+          <Text style={styles.btnText}>Share</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 };
-
-// --- Main Screen ---
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [sourceFileUri, setSourceFileUri] = useState<string | null>(null);
@@ -270,35 +297,26 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [activeAccordion, setActiveAccordion] = useState<string | null>(
     STYLE_CATEGORIES[0].name
   );
-
   const [credits, setCredits] = useState(0);
-
   const { session, logout } = useAuth();
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-
       const fetchCredits = async () => {
         if (!session?.user) return;
-
         try {
-          const { data, error } = await supabase
+          const { data } = await supabase
             .from("user_profiles")
             .select("generation_credits")
             .eq("id", session.user.id)
             .single();
-
-          if (data && isActive) {
-            setCredits(data.generation_credits);
-          }
+          if (data && isActive) setCredits(data.generation_credits);
         } catch (err) {
           console.log("Error fetching credits:", err);
         }
       };
-
       fetchCredits();
-
       return () => {
         isActive = false;
       };
@@ -324,7 +342,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const handleDecorate = async () => {
     if (!sourceFileUri) {
-      setError("Please upload an image first.");
+      Alert.alert("Action Required", "Please upload an image first.");
+      return;
+    }
+
+    if (!roomType) {
+      Alert.alert(
+        "Action Required",
+        "Please select a Room Type (e.g., Living Room) to continue."
+      );
       return;
     }
 
@@ -333,20 +359,22 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     const creditCost = decorMode === "style" ? 1 : 3;
 
     if (!decorationPrompt) {
-      setError("Please select a style or enter a custom design.");
+      Alert.alert(
+        "Action Required",
+        "Please select a style or enter a custom design description."
+      );
       return;
     }
 
     if (credits < creditCost) {
       Alert.alert(
-        "Insufficient Credits",
-        "You've used your free credits! Visit our website to get more.",
+        "Out of Credits",
+        "You need more credits to continue decorating.",
         [
           { text: "Cancel", style: "cancel" },
           {
             text: "Get Credits",
-            onPress: () =>
-              Linking.openURL("https://aihomedecorator.com/pricing"),
+            onPress: () => Linking.openURL("https://aihomedecorator.com/"),
           },
         ]
       );
@@ -363,153 +391,190 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         roomType
       );
       setGeneratedImageUrl(result);
-
-      setCredits((prev) => prev - creditCost);
+      setCredits((prev) => Math.max(0, prev - creditCost));
     } catch (e: any) {
-      setError(e.message || "An unknown error occurred.");
+      const errorMessage = e.message || "An unknown error occurred.";
+      if (
+        errorMessage.includes("Invalid or expired token") ||
+        errorMessage.includes("JWT")
+      ) {
+        Alert.alert("Session Expired", "Please log in again.", [
+          { text: "Logout", onPress: logout },
+        ]);
+        setError("Session expired. Please login again.");
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const renderContent = () => {
-    if (isLoading) return null;
-
-    if (generatedImageUrl && sourceImageUrl) {
-      return (
-        <GeneratedImageDisplay
-          sourceImage={sourceImageUrl}
-          generatedImage={generatedImageUrl}
-          onReset={resetState}
-        />
-      );
-    }
-
-    if (!sourceImageUrl) {
-      return (
-        <View style={styles.uploaderArea}>
-          <ImageUploader onImageSelected={handleImageSelect} />
-        </View>
-      );
-    }
-
-    const creditCost = decorMode === "style" ? 1 : 3;
-    const isDecorateDisabled =
-      (decorMode === "style" && !selectedStyle) ||
-      (decorMode === "custom" && !customPrompt);
-
+  if (isLoading) return <Loader />;
+  if (generatedImageUrl && sourceImageUrl) {
     return (
-      <View style={styles.decorContainer}>
-        <View style={styles.decorGrid}>
-          <View style={styles.decorColumn}>
-            <Text style={styles.decorTitle}>1. Upload & Describe</Text>
-            <View>
-              <Image
-                source={{ uri: sourceImageUrl }}
-                style={styles.decorImage}
-              />
-              <TouchableOpacity
-                onPress={() => {
-                  setSourceFileUri(null);
-                  setSourceImageUrl(null);
-                }}
-                style={styles.changeImageButton}
-              >
-                <Text style={styles.changeImageButtonText}>Change</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.pickerContainer}>
-              <Text style={styles.label}>Describe the room</Text>
-              <View style={styles.pickerWrapper}>
-                <Picker
-                  selectedValue={roomType}
-                  onValueChange={(itemValue) => setRoomType(itemValue)}
-                  style={styles.picker}
-                  itemStyle={styles.pickerItem}
-                >
-                  <Picker.Item label="-- Select Room Type --" value="" />
-                  {ROOM_TYPES.map((type) => (
-                    <Picker.Item key={type} label={type} value={type} />
-                  ))}
-                </Picker>
+      <SafeAreaView
+        style={styles.container}
+        edges={["bottom", "left", "right"]}
+      >
+        <Header />
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <GeneratedImageDisplay
+            sourceImage={sourceImageUrl}
+            generatedImage={generatedImageUrl}
+            onReset={resetState}
+          />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+      <Header>
+        <TouchableOpacity onPress={logout} style={styles.headerBtn}>
+          <Text style={styles.headerBtnText}>Log Out</Text>
+        </TouchableOpacity>
+      </Header>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {error && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {!sourceImageUrl ? (
+          <>
+            <ImageUploader onImageSelected={handleImageSelect} />
+            <InspirationGallery />
+          </>
+        ) : (
+          <View style={styles.workspace}>
+            {/* Step 1: Image Preview & Type */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepText}>1</Text>
+                </View>
+                <Text style={styles.cardTitle}>Your Room</Text>
+              </View>
+
+              <View style={styles.previewContainer}>
+                <Image
+                  source={{ uri: sourceImageUrl }}
+                  style={styles.previewImage}
+                />
+                <TouchableOpacity onPress={resetState} style={styles.retakeBtn}>
+                  <Text style={styles.retakeText}>Change Photo</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Room Type</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={roomType}
+                    onValueChange={setRoomType}
+                    style={styles.picker}
+                    itemStyle={{ color: "white" }}
+                    dropdownIconColor="white"
+                  >
+                    <Picker.Item
+                      label="Select Room Type..."
+                      value=""
+                      enabled={false}
+                    />
+                    {ROOM_TYPES.map((t) => (
+                      <Picker.Item key={t} label={t} value={t} />
+                    ))}
+                  </Picker>
+                </View>
               </View>
             </View>
-          </View>
 
-          <View style={styles.decorColumn}>
-            <View style={styles.tabsContainer}>
-              <TouchableOpacity
-                onPress={() => setDecorMode("style")}
-                style={[styles.tab, decorMode === "style" && styles.tabActive]}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    decorMode === "style" && styles.tabTextActive,
-                  ]}
-                >
-                  Choose a Style
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setDecorMode("custom")}
-                style={[styles.tab, decorMode === "custom" && styles.tabActive]}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    decorMode === "custom" && styles.tabTextActive,
-                  ]}
-                >
-                  Custom Design
-                </Text>
-              </TouchableOpacity>
-            </View>
+            {/* Step 2: Style Selection */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepText}>2</Text>
+                </View>
+                <Text style={styles.cardTitle}>Design Style</Text>
+              </View>
 
-            {decorMode === "style" ? (
-              <View>
-                <Text style={styles.decorTitle}>2. Choose a Style</Text>
-                <View>
-                  {STYLE_CATEGORIES.map((category) => (
-                    <View key={category.name} style={styles.accordionItem}>
+              <View style={styles.segmentedControl}>
+                <TouchableOpacity
+                  style={[
+                    styles.segment,
+                    decorMode === "style" && styles.segmentActive,
+                  ]}
+                  onPress={() => setDecorMode("style")}
+                >
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      decorMode === "style" && styles.segmentTextActive,
+                    ]}
+                  >
+                    Presets
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.segment,
+                    decorMode === "custom" && styles.segmentActive,
+                  ]}
+                  onPress={() => setDecorMode("custom")}
+                >
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      decorMode === "custom" && styles.segmentTextActive,
+                    ]}
+                  >
+                    Custom
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {decorMode === "style" ? (
+                <View style={styles.styleList}>
+                  {STYLE_CATEGORIES.map((cat) => (
+                    <View key={cat.name} style={styles.accordion}>
                       <TouchableOpacity
+                        style={styles.accordionHeader}
                         onPress={() =>
                           setActiveAccordion(
-                            activeAccordion === category.name
-                              ? null
-                              : category.name
+                            activeAccordion === cat.name ? null : cat.name
                           )
                         }
-                        style={styles.accordionHeader}
                       >
-                        <Text style={styles.accordionHeaderText}>
-                          {category.name}
-                        </Text>
+                        <Text style={styles.accordionTitle}>{cat.name}</Text>
                         <AccordionChevronIcon
-                          style={styles.accordionIcon}
-                          active={activeAccordion === category.name}
+                          style={{ color: "#94A3B8" }}
+                          active={activeAccordion === cat.name}
                         />
                       </TouchableOpacity>
-                      {activeAccordion === category.name && (
-                        <View style={styles.accordionBody}>
-                          {category.styles.map((style) => (
+
+                      {activeAccordion === cat.name && (
+                        <View style={styles.styleGrid}>
+                          {cat.styles.map((s) => (
                             <TouchableOpacity
-                              key={style.name}
-                              onPress={() => setSelectedStyle(style)}
+                              key={s.name}
                               style={[
-                                styles.styleButton,
-                                selectedStyle?.name === style.name &&
-                                  styles.styleButtonActive,
+                                styles.styleChip,
+                                selectedStyle?.name === s.name &&
+                                  styles.styleChipActive,
                               ]}
+                              onPress={() => setSelectedStyle(s)}
                             >
                               <Text
                                 style={[
-                                  styles.styleButtonText,
-                                  selectedStyle?.name === style.name &&
-                                    styles.styleButtonTextActive,
+                                  styles.styleChipText,
+                                  selectedStyle?.name === s.name &&
+                                    styles.styleChipTextActive,
                                 ]}
                               >
-                                {style.name}
+                                {s.name}
                               </Text>
                             </TouchableOpacity>
                           ))}
@@ -518,462 +583,381 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     </View>
                   ))}
                 </View>
-              </View>
-            ) : (
-              <View>
-                <View style={styles.creditsNote}>
-                  <Text style={styles.creditsNoteText}>
-                    Note: Custom designs require 3 credits per generation.
+              ) : (
+                <View style={styles.customInputContainer}>
+                  <View style={styles.infoBox}>
+                    <Text style={styles.infoText}>
+                      ✨ Custom designs cost 3 credits.
+                    </Text>
+                  </View>
+                  <TextInput
+                    style={styles.textArea}
+                    placeholder="Describe your dream room... (e.g. 'Cyberpunk living room with neon lights')"
+                    placeholderTextColor="#64748B"
+                    multiline
+                    value={customPrompt}
+                    onChangeText={setCustomPrompt}
+                    maxLength={250}
+                  />
+                  <Text style={styles.charCount}>
+                    {customPrompt.length}/250
                   </Text>
                 </View>
-                <Text style={styles.decorTitle}>2. Describe Your Design</Text>
-                <Text style={styles.label}>
-                  Be descriptive! "A modern, white kitchen..."
-                </Text>
-                <TextInput
-                  value={customPrompt}
-                  onChangeText={setCustomPrompt}
-                  placeholder="e.g., Add a red velvet sofa, hardwood floors..."
-                  placeholderTextColor="#9CA3AF"
-                  style={styles.textInput}
-                  multiline={true}
-                  numberOfLines={5}
-                  maxLength={200}
-                />
-                <Text style={styles.charCount}>{customPrompt.length}/200</Text>
-              </View>
-            )}
-          </View>
-        </View>
+              )}
+            </View>
 
-        <View style={styles.footerActions}>
-          <TouchableOpacity
-            onPress={handleDecorate}
-            disabled={isDecorateDisabled}
-            style={[
-              styles.decorateButton,
-              isDecorateDisabled && styles.decorateButtonDisabled,
-            ]}
-          >
-            <DecorateIcon style={styles.decorateButtonIcon} />
-            <Text style={styles.decorateButtonText}>
-              Decorate ({creditCost} Credit{creditCost > 1 ? "s" : ""})
-            </Text>
-          </TouchableOpacity>
-          <Text style={styles.creditsText}>Credits remaining: {credits}</Text>
-        </View>
-      </View>
-    );
-  };
-
-  return (
-    <SafeAreaView
-      style={styles.appContainer}
-      edges={["bottom", "left", "right"]}
-    >
-      {isLoading && <Loader />}
-      <Header>
-        <View style={styles.authButtonsContainer}>
-          <TouchableOpacity
-            style={styles.aboutButton}
-            onPress={() => navigation.navigate("About")}
-          >
-            <Text style={styles.aboutButtonText}>About</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-            <Text style={styles.logoutButtonText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
-      </Header>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
+            {/* Floating Action Footer */}
+            <View style={styles.generateSection}>
+              <TouchableOpacity
+                style={styles.generateBtn}
+                onPress={handleDecorate}
+              >
+                <DecorateIcon style={{ color: "white", marginRight: 8 }} />
+                <Text style={styles.generateBtnText}>Generate Design</Text>
+                <View style={styles.creditBadge}>
+                  <Text style={styles.creditBadgeText}>
+                    {decorMode === "style" ? 1 : 3}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              <Text style={styles.balanceText}>
+                You have {credits} credits available
+              </Text>
+            </View>
           </View>
         )}
-        {renderContent()}
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-// --- STYLES ---
-const { width } = Dimensions.get("window");
-const isSmallScreen = width < 768;
-
 const styles = StyleSheet.create({
-  authButtonsContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12, // Reduced gap slightly
-  },
-  aboutButton: {
+  container: { flex: 1, backgroundColor: "#0F172A" },
+  scrollContent: { padding: 16, paddingBottom: 40 },
+  headerBtn: {
+    backgroundColor: "#334155",
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    paddingHorizontal: 10,
     borderRadius: 8,
   },
-  aboutButtonText: {
-    color: "#D1D5DB",
-    fontWeight: "600",
-    fontSize: 14,
+  headerBtnText: { color: "#F8FAFC", fontSize: 12, fontWeight: "600" },
+
+  // Error
+  errorBanner: {
+    backgroundColor: "rgba(239,68,68,0.15)",
+    borderColor: "#EF4444",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
   },
-  // --- FIX 3: Adjusted Logout Button Styles for better proportion ---
-  logoutButton: {
-    backgroundColor: "#DC2626",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+  errorText: { color: "#EF4444", textAlign: "center", fontSize: 14 },
+
+  // Upload Card
+  uploadCard: {
+    backgroundColor: "#1E293B",
+    borderRadius: 24,
+    padding: 32,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#334155",
+    borderStyle: "dashed",
+    marginTop: 20,
   },
-  logoutButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 12,
+  uploadIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(99,102,241,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
   },
-  cameraControls: {
+  uploadTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#F8FAFC",
+    marginBottom: 8,
+  },
+  uploadSubtitle: {
+    fontSize: 15,
+    color: "#94A3B8",
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  uploadActions: { width: "100%", gap: 12 },
+
+  // Common Buttons
+  actionButton: {
+    flex: 1, // --- FIXED: Ensures equal width for all buttons
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 52,
+    borderRadius: 14,
+    paddingHorizontal: 4,
+  },
+  primaryButton: { backgroundColor: "#6366F1" },
+  secondaryButton: { backgroundColor: "#334155" },
+  accentButton: { backgroundColor: "#8B5CF6" },
+  btnText: { color: "#FFF", fontWeight: "600", fontSize: 14, marginLeft: 8 },
+  btnIcon: { color: "#FFF" },
+
+  // Gallery
+  gallerySection: { marginTop: 40 },
+  sectionHeader: { marginBottom: 20 },
+  sectionTitle: { fontSize: 20, fontWeight: "700", color: "#F8FAFC" },
+  sectionSubtitle: { fontSize: 14, color: "#94A3B8", marginTop: 2 },
+  galleryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  galleryCard: {
+    width: "48%",
+    aspectRatio: 1,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#1E293B",
+  },
+  galleryImg: { width: "100%", height: "100%" },
+  galleryOverlay: {
     position: "absolute",
     bottom: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
     width: "100%",
-    paddingHorizontal: 30,
-    paddingVertical: 30,
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  cameraButton: {
-    padding: 10,
-  },
-  cameraButtonText: {
-    color: "white",
-    fontSize: 16,
-  },
-  cameraButtonCapture: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: "white",
-    borderColor: "#CCC",
-    borderWidth: 5,
-  },
-  appContainer: {
-    flex: 1,
-    backgroundColor: "#111827",
-  },
-  scrollContainer: {
-    paddingBottom: 48,
-    paddingHorizontal: 16,
-  },
-  uploaderArea: {
-    marginTop: 48,
-  },
-  uploaderContainer: {
-    maxWidth: 600,
-    alignSelf: "center",
-    width: "100%",
-    padding: 32,
-    borderWidth: 2,
-    borderColor: "#4B5563",
-    borderStyle: "dashed",
-    borderRadius: 16,
-    backgroundColor: "rgba(31, 41, 55, 0.5)",
-    alignItems: "center",
-  },
-  uploaderTitle: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: "white",
-    marginBottom: 8,
-  },
-  uploaderSubtitle: {
-    color: "#9CA3AF",
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  uploaderButtonContainer: {
-    flexDirection: isSmallScreen ? "column" : "row",
-    gap: 16,
-  },
-  button: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    gap: 8,
-  },
-  uploadBtnSpacing: {
-    marginBottom: isSmallScreen ? 12 : 0,
-  },
-  buttonPrimary: {
-    backgroundColor: "#4F46E5",
-  },
-  buttonSecondary: {
-    backgroundColor: "#4B5563",
-  },
-  buttonPurple: {
-    backgroundColor: "#7C3AED",
-  },
-  buttonText: {
-    color: "white",
-    fontWeight: "600",
-  },
-  buttonIcon: {
-    color: "white",
-  },
-  displayContainer: {
-    maxWidth: 1024,
-    width: "100%",
-    alignSelf: "center",
-    marginTop: 32,
-  },
-  displayTitle: {
-    fontSize: 30,
-    fontWeight: "bold",
-    color: "white",
-    textAlign: "center",
-    marginBottom: 24,
-  },
-  displayGrid: {
-    flexDirection: isSmallScreen ? "column" : "row",
-    gap: 32,
-  },
-  displayColumn: {
-    flex: 1,
-  },
-  displaySubtitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#D1D5DB",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  displayImage: {
-    width: "100%",
-    aspectRatio: 1,
-    borderRadius: 12,
-  },
-  displayActions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 16,
-    justifyContent: "center",
-    marginTop: 32,
-  },
-  decorContainer: {
-    maxWidth: 1152,
-    width: "100%",
-    alignSelf: "center",
-    marginTop: 32,
-    backgroundColor: "rgba(31, 41, 55, 0.5)",
-    borderRadius: 16,
-    padding: isSmallScreen ? 16 : 32,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-  },
-  decorGrid: {
-    flexDirection: isSmallScreen ? "column" : "row",
-    gap: 32,
-  },
-  decorColumn: {
-    flex: 1,
-    gap: 16,
-  },
-  decorTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "white",
-  },
-  decorImage: {
-    width: "100%",
-    aspectRatio: 16 / 9,
-    borderRadius: 12,
-  },
-  changeImageButton: {
-    position: "absolute",
-    top: 8,
-    right: 8,
+    padding: 8,
     backgroundColor: "rgba(0,0,0,0.6)",
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 6,
   },
-  changeImageButtonText: {
-    color: "white",
-    fontSize: 12,
+  galleryLabel: {
+    color: "#FFF",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+
+  // Workspace
+  workspace: { gap: 24 },
+  card: {
+    backgroundColor: "#1E293B",
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#6366F1",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  stepText: { color: "#FFF", fontWeight: "bold", fontSize: 14 },
+  cardTitle: { fontSize: 18, fontWeight: "700", color: "#F8FAFC" },
+
+  previewContainer: {
+    height: 200,
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 20,
+    position: "relative",
+  },
+  previewImage: { width: "100%", height: "100%" },
+  retakeBtn: {
+    position: "absolute",
+    bottom: 12,
+    right: 12,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  retakeText: { color: "#FFF", fontSize: 12, fontWeight: "600" },
+
+  inputContainer: {},
+  inputLabel: {
+    color: "#CBD5E1",
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+    marginLeft: 4,
   },
   pickerContainer: {
-    width: "100%",
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#D1D5DB",
-    marginBottom: 8,
-  },
-  pickerWrapper: {
-    backgroundColor: "#374151",
-    borderRadius: 8,
+    backgroundColor: "#0F172A",
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#4B5563",
+    borderColor: "#334155",
     overflow: "hidden",
   },
-  picker: {
-    color: "white",
-    ...Platform.select({
-      ios: {
-        height: 120,
-      },
-      android: {
-        height: 50,
-      },
-    }),
-  },
-  pickerItem: {
-    color: "white",
-    backgroundColor: "#374151",
-  },
-  tabsContainer: {
+  picker: { color: "#FFF", height: Platform.OS === "ios" ? 120 : 50 },
+
+  // Segmented Control
+  segmentedControl: {
     flexDirection: "row",
-    backgroundColor: "rgba(17, 24, 39, 0.5)",
-    borderRadius: 8,
+    backgroundColor: "#0F172A",
     padding: 4,
+    borderRadius: 12,
+    marginBottom: 20,
   },
-  tab: {
+  segment: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
   },
-  tabActive: {
-    backgroundColor: "#4F46E5",
-  },
-  tabText: {
-    color: "#D1D5DB",
-    textAlign: "center",
-    fontWeight: "600",
-  },
-  tabTextActive: {
-    color: "white",
-  },
-  accordionItem: {
-    marginBottom: 8,
+  segmentActive: { backgroundColor: "#334155" },
+  segmentText: { color: "#94A3B8", fontWeight: "600" },
+  segmentTextActive: { color: "#F8FAFC" },
+
+  // Style Grid
+  styleList: { gap: 12 },
+  accordion: {
+    backgroundColor: "#0F172A",
+    borderRadius: 12,
+    overflow: "hidden",
   },
   accordionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
+    padding: 16,
     alignItems: "center",
-    padding: 16,
-    backgroundColor: "rgba(55, 65, 81, 0.8)",
-    borderRadius: 8,
   },
-  accordionHeaderText: {
-    color: "white",
-    fontWeight: "600",
-  },
-  accordionIcon: {
-    color: "white",
-  },
-  accordionBody: {
-    padding: 16,
-    backgroundColor: "rgba(17, 24, 39, 0.3)",
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
+  accordionTitle: { color: "#F8FAFC", fontWeight: "600", fontSize: 15 },
+  styleGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
-  },
-  styleButton: {
-    backgroundColor: "#4B5563",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-  },
-  styleButtonActive: {
-    backgroundColor: "#4F46E5",
-  },
-  styleButtonText: {
-    color: "#E5E7EB",
-    fontSize: 14,
-  },
-  styleButtonTextActive: {
-    color: "white",
-  },
-  creditsNote: {
-    backgroundColor: "rgba(168, 85, 247, 0.1)",
-    borderColor: "rgba(168, 85, 247, 0.3)",
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 8,
-    marginBottom: 16,
-  },
-  creditsNoteText: {
-    color: "#D8B4FE",
-    fontSize: 12,
-    textAlign: "center",
-  },
-  textInput: {
-    backgroundColor: "#374151",
-    color: "white",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#4B5563",
     padding: 12,
-    minHeight: 120,
+    gap: 10,
+    paddingTop: 0,
+  },
+  styleChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 100,
+    backgroundColor: "#1E293B",
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  styleChipActive: { backgroundColor: "#6366F1", borderColor: "#6366F1" },
+  styleChipText: { color: "#CBD5E1", fontSize: 13 },
+  styleChipTextActive: { color: "#FFF", fontWeight: "700" },
+
+  // Custom Input
+  customInputContainer: {},
+  infoBox: {
+    backgroundColor: "rgba(139, 92, 246, 0.1)",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(139, 92, 246, 0.3)",
+  },
+  infoText: { color: "#C4B5FD", fontSize: 13, textAlign: "center" },
+  textArea: {
+    backgroundColor: "#0F172A",
+    borderRadius: 16,
+    padding: 16,
+    color: "#F8FAFC",
+    height: 120,
     textAlignVertical: "top",
+    borderWidth: 1,
+    borderColor: "#334155",
   },
   charCount: {
-    color: "#6B7280",
+    color: "#64748B",
     fontSize: 12,
     textAlign: "right",
-    marginTop: 4,
+    marginTop: 8,
   },
-  footerActions: {
-    marginTop: 32,
-    paddingTop: 24,
-    borderTopWidth: 1,
-    borderColor: "#374151",
-    alignItems: "center",
-  },
-  decorateButton: {
+
+  // Generate Footer
+  generateSection: { marginTop: 12, alignItems: "center" },
+  generateBtn: {
+    width: "100%",
+    backgroundColor: "#6366F1",
+    height: 56,
+    borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    backgroundColor: "#4F46E5",
-    borderRadius: 8,
-    gap: 8,
+    shadowColor: "#6366F1",
+    shadowOpacity: 0.4,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
   },
-  decorateButtonDisabled: {
-    backgroundColor: "#4B5563",
+  generateBtnDisabled: {
+    backgroundColor: "#334155",
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  decorateButtonText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "bold",
+  generateBtnText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
+  creditBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 10,
   },
-  decorateButtonIcon: {
-    color: "white",
+  creditBadgeText: { color: "#FFF", fontWeight: "bold", fontSize: 12 },
+  balanceText: { color: "#94A3B8", marginTop: 16, fontSize: 14 },
+
+  // Results
+  resultContainer: { alignItems: "center", marginTop: 20 },
+  resultHeader: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#F8FAFC",
+    marginBottom: 24,
   },
-  creditsText: {
-    color: "#9CA3AF",
-    fontSize: 14,
-    marginTop: 12,
+  imageComparison: { width: "100%", gap: 20 },
+  imageWrapper: {
+    borderRadius: 20,
+    overflow: "hidden",
+    backgroundColor: "#1E293B",
+    position: "relative",
   },
-  errorBox: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: "rgba(239, 68, 68, 0.2)",
-    borderColor: "rgba(239, 68, 68, 0.5)",
-    borderWidth: 1,
-    borderRadius: 8,
+  resultImg: { width: "100%", aspectRatio: 1 },
+  imageBadge: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 100,
+    zIndex: 10,
   },
-  errorText: {
-    color: "#F87171",
-    textAlign: "center",
-    fontSize: 14,
+  badgeText: { color: "#FFF", fontSize: 12, fontWeight: "bold" },
+  resultActions: {
+    flexDirection: "row",
+    width: "100%",
+    gap: 12,
+    marginTop: 24,
+  },
+
+  // Camera Modal
+  cameraOverlay: { flex: 1, justifyContent: "space-between", padding: 20 },
+  cameraCloseBtn: {
+    alignSelf: "flex-end",
+    padding: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 20,
+  },
+  cameraCloseText: { color: "#FFF", fontWeight: "600" },
+  cameraBottomBar: { alignItems: "center", marginBottom: 20 },
+  shutterButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 4,
+    borderColor: "#FFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shutterInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#FFF",
   },
 });
 

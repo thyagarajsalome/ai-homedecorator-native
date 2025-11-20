@@ -3,7 +3,6 @@ import { supabase } from "../lib/supabase";
 
 // REPLACE THIS WITH YOUR ACTUAL DEPLOYED BACKEND URL (e.g. Cloud Run URL)
 // Do not use 'localhost' here because your phone cannot see your computer's localhost.
-// services/geminiService.ts
 
 // ✅ CORRECT (Use YOUR specific URL)
 const BACKEND_URL =
