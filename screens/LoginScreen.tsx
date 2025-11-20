@@ -9,9 +9,9 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LogoIcon } from "../components/Icons";
 import { supabase } from "../lib/supabase";
 
 const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
@@ -51,7 +51,12 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
-            <LogoIcon style={styles.logo} />
+            {/* Updated Logo */}
+            <Image
+              source={require("../assets/images/icon.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.subtitle}>
               Sign in to design your dream space
@@ -134,7 +139,7 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#0F172A", // Slate 900
+    backgroundColor: "#0F172A",
   },
   container: {
     flex: 1,
@@ -149,20 +154,21 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
-    width: 80,
-    height: 80,
+    width: 100, // Increased size slightly
+    height: 100,
     marginBottom: 24,
+    borderRadius: 20,
   },
   title: {
     fontSize: 32,
     fontWeight: "800",
-    color: "#F8FAFC", // Slate 50
+    color: "#F8FAFC",
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: "#94A3B8", // Slate 400
+    color: "#94A3B8",
     textAlign: "center",
   },
   form: {
@@ -176,22 +182,22 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#CBD5E1", // Slate 300
+    color: "#CBD5E1",
     marginBottom: 8,
     marginLeft: 4,
   },
   input: {
-    backgroundColor: "#1E293B", // Slate 800
+    backgroundColor: "#1E293B",
     color: "#F8FAFC",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#334155", // Slate 700
+    borderColor: "#334155",
     paddingHorizontal: 16,
     height: 56,
     fontSize: 16,
   },
   button: {
-    backgroundColor: "#6366F1", // Indigo 500
+    backgroundColor: "#6366F1",
     height: 56,
     borderRadius: 16,
     alignItems: "center",
@@ -222,7 +228,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   linkAccent: {
-    color: "#818CF8", // Indigo 400
+    color: "#818CF8",
     fontWeight: "700",
   },
   footer: {

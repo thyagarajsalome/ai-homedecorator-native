@@ -97,7 +97,7 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
       return;
     }
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, // FIXED: Correct Enum usage
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.5,
@@ -154,7 +154,8 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
   );
 };
 
-// --- FIXED: Use Local Images with require() ---
+// --- IMAGES ---
+// Ensure these files exist in assets/images/inspiration/
 const INSPIRATION_IMAGES = [
   {
     id: "1",
@@ -188,7 +189,6 @@ const InspirationGallery: React.FC = () => {
       <View style={styles.galleryGrid}>
         {INSPIRATION_IMAGES.map((item) => (
           <View key={item.id} style={styles.galleryCard}>
-            {/* FIXED: Use item.image directly for require() */}
             <Image source={item.image} style={styles.galleryImg} />
             <View style={styles.galleryOverlay}>
               <Text style={styles.galleryLabel}>{item.label}</Text>
@@ -692,16 +692,18 @@ const styles = StyleSheet.create({
 
   // Common Buttons
   actionButton: {
+    flex: 1, // --- FIXED: Ensures equal width for all buttons
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     height: 52,
     borderRadius: 14,
+    paddingHorizontal: 4,
   },
   primaryButton: { backgroundColor: "#6366F1" },
   secondaryButton: { backgroundColor: "#334155" },
   accentButton: { backgroundColor: "#8B5CF6" },
-  btnText: { color: "#FFF", fontWeight: "600", fontSize: 16, marginLeft: 8 },
+  btnText: { color: "#FFF", fontWeight: "600", fontSize: 14, marginLeft: 8 },
   btnIcon: { color: "#FFF" },
 
   // Gallery
