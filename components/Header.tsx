@@ -8,22 +8,17 @@ type HeaderProps = {
 };
 
 const Header: React.FC<HeaderProps> = ({ children }) => {
-  // Get the safe area insets (this handles the notch/status bar height dynamically)
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.header, { paddingTop: insets.top }]}>
       <View style={styles.headerNav}>
         <View style={styles.headerLogoContainer}>
-          <LogoIcon />
+          <LogoIcon style={{ width: 28, height: 28 }} />
           <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>AI Home Decorator</Text>
-            <Text style={styles.headerSubtitle}>
-              See your dream space come to life.
-            </Text>
+            <Text style={styles.headerTitle}>AI Decorator</Text>
           </View>
         </View>
-        {/* This View will hold the buttons if they are passed in */}
         <View>{children}</View>
       </View>
     </View>
@@ -32,33 +27,33 @@ const Header: React.FC<HeaderProps> = ({ children }) => {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "rgba(17, 24, 39, 0.95)", // Slightly higher opacity for better readability
-    borderBottomWidth: 1,
-    borderBottomColor: "#374151",
-    // Padding top is handled dynamically via insets in the component
+    backgroundColor: "#0F172A", // Match app background for seamless look
+    // Removed border for cleaner look, rely on content separation
   },
   headerNav: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    height: 64,
-    paddingHorizontal: 16,
+    height: 60,
+    paddingHorizontal: 20,
   },
   headerLogoContainer: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
   },
   headerTitleContainer: {
-    marginLeft: 16,
+    justifyContent: "center",
   },
   headerTitle: {
-    color: "#C084FC",
-    fontSize: 20,
-    fontWeight: "bold",
+    color: "#F8FAFC",
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
-    color: "#9CA3AF",
-    fontSize: 12,
+    color: "#94A3B8",
+    fontSize: 11,
   },
 });
 
