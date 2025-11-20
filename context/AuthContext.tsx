@@ -41,7 +41,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    try {
+      // Attempt to sign out from Supabase backend
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Error signing out:", error.message);
+      }
+    } catch (err) {
+      console.error("Unexpected error during logout:", err);
+    } finally {
+      // Force local state update to ensure navigation happens
+      // This handles cases where the network fails or the event listener doesn't fire
+      setSession(null);
+    }
   };
 
   // Placeholder to satisfy interface, actual login happens in LoginScreen via supabase.auth.signInWithPassword
