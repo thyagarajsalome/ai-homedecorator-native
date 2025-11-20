@@ -6,186 +6,248 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert, // Added Alert
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
 } from "react-native";
-// Removed SafeAreaView from react-native
-import { SafeAreaView } from "react-native-safe-area-context"; // Added correct SafeAreaView
-import { useAuth } from "../context/AuthContext";
-import { LogoIcon } from "../components/Icons";
-import Header from "../components/Header";
-import { supabase } from "../lib/supabase"; // Added Supabase import
+import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from "../lib/supabase";
 
 const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false); // Added loading state
+  const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password");
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
     setLoading(true);
     try {
       const { error } = await supabase.auth.signUp({
-        email: email,
-        password: password,
+        email,
+        password,
       });
 
       if (error) {
-        Alert.alert("Sign Up Error", error.message);
+        Alert.alert("Sign Up Failed", error.message);
       } else {
         Alert.alert(
-          "Success",
-          "Account created! Please check your email to verify your account, then log in.",
-          [{ text: "OK", onPress: () => navigation.navigate("Login") }]
+          "Account Created",
+          "Please check your email to verify your account before logging in.",
+          [{ text: "Go to Login", onPress: () => navigation.navigate("Login") }]
         );
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message || "An unexpected error occurred");
+      Alert.alert("Error", error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView
-      style={styles.appContainer}
-      edges={["bottom", "left", "right"]}
-    >
-      <Header />
-      <ScrollView contentContainerStyle={styles.container}>
-        <LogoIcon style={{ width: 60, height: 60, marginBottom: 20 }} />
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Start your design journey</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            {/* Updated to use your provided logo */}
+            <Image
+              source={require("../assets/images/icon.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Join the future of home design</Text>
+          </View>
 
-        <TextInput
-          style={styles.textInput}
-          placeholder="Email"
-          placeholderTextColor="#9CA3AF"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Password"
-          placeholderTextColor="#9CA3AF"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="you@example.com"
+                placeholderTextColor="#64748B"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleSignUp}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? "Creating Account..." : "Sign Up"}
-          </Text>
-        </TouchableOpacity>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Create a strong password"
+                placeholderTextColor="#64748B"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
 
-        <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-          <Text style={styles.linkText}>
-            Already have an account? <Text style={styles.link}>Log In</Text>
-          </Text>
-        </TouchableOpacity>
-
-        <View style={styles.legalContainer}>
-          <Text style={styles.legalText}>By signing up, you agree to our</Text>
-          <View style={styles.legalLinks}>
-            <TouchableOpacity onPress={() => navigation.navigate("Privacy")}>
-              <Text style={styles.legalLink}>Privacy Policy</Text>
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleSignUp}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.buttonText}>
+                {loading ? "Creating..." : "Sign Up"}
+              </Text>
             </TouchableOpacity>
-            <Text style={styles.legalText}> and </Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Disclaimer")}>
-              <Text style={styles.legalLink}>Disclaimer</Text>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Login")}
+              style={styles.linkContainer}
+            >
+              <Text style={styles.linkText}>
+                Already have an account?{" "}
+                <Text style={styles.linkAccent}>Log In</Text>
+              </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
+
+          <View style={styles.footer}>
+            <Text style={styles.legalText}>
+              By creating an account, you agree to our{" "}
+              <Text
+                style={styles.legalLink}
+                onPress={() => navigation.navigate("Privacy")}
+              >
+                Privacy Policy
+              </Text>{" "}
+              and{" "}
+              <Text
+                style={styles.legalLink}
+                onPress={() => navigation.navigate("Disclaimer")}
+              >
+                Disclaimer
+              </Text>
+              .
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  appContainer: {
+  safeArea: {
     flex: 1,
-    backgroundColor: "#111827",
+    backgroundColor: "#0F172A",
   },
   container: {
+    flex: 1,
+  },
+  scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
+    padding: 24,
+  },
+  header: {
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 20,
+    marginBottom: 40,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    marginBottom: 24,
+    borderRadius: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "white",
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#F8FAFC",
     marginBottom: 8,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: "#9CA3AF",
-    marginBottom: 32,
+    color: "#94A3B8",
+    textAlign: "center",
   },
-  textInput: {
+  form: {
     width: "100%",
-    backgroundColor: "#374151",
-    color: "white",
-    borderRadius: 8,
+    maxWidth: 400,
+    alignSelf: "center",
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#CBD5E1",
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  input: {
+    backgroundColor: "#1E293B",
+    color: "#F8FAFC",
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#4B5563",
-    padding: 16,
+    borderColor: "#334155",
+    paddingHorizontal: 16,
+    height: 56,
     fontSize: 16,
-    marginBottom: 16,
   },
   button: {
-    width: "100%",
-    backgroundColor: "#4F46E5",
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: "#6366F1",
+    height: 56,
+    borderRadius: 16,
     alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
     marginBottom: 24,
+    shadowColor: "#6366F1",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
   },
   buttonDisabled: {
-    backgroundColor: "#374151",
+    backgroundColor: "#334155",
     opacity: 0.7,
   },
   buttonText: {
-    color: "white",
-    fontWeight: "600",
+    color: "#FFFFFF",
     fontSize: 16,
+    fontWeight: "700",
+  },
+  linkContainer: {
+    alignItems: "center",
+    padding: 8,
   },
   linkText: {
-    color: "#9CA3AF",
-    fontSize: 14,
+    color: "#94A3B8",
+    fontSize: 15,
   },
-  link: {
-    color: "#C084FC",
-    fontWeight: "bold",
+  linkAccent: {
+    color: "#818CF8",
+    fontWeight: "700",
   },
-  legalContainer: {
-    marginTop: 48,
+  footer: {
+    marginTop: "auto",
     alignItems: "center",
-  },
-  legalLinks: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    paddingTop: 24,
   },
   legalText: {
-    color: "#6B7280",
+    color: "#64748B",
     fontSize: 12,
+    textAlign: "center",
+    lineHeight: 18,
   },
   legalLink: {
-    color: "#9CA3AF",
-    fontSize: 12,
+    color: "#94A3B8",
     textDecorationLine: "underline",
   },
 });

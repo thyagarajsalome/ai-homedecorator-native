@@ -11,7 +11,7 @@ import { Session } from "@supabase/supabase-js";
 interface AuthContextType {
   isAuthenticated: boolean;
   session: Session | null;
-  login: () => void; // Keep for navigation types, but logic moves to screens
+  login: () => void;
   logout: () => void;
 }
 
@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       setIsLoading(false);
     });
 
-    // Listen for auth changes (login, logout, auto-refresh)
+    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -41,10 +41,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    try {
+      // Attempt backend sign out
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.log("Logout error (ignoring to force UI update):", error);
+    } finally {
+      // FORCE update local state to ensure navigation to Login screen happens
+      setSession(null);
+    }
   };
 
-  // Placeholder to satisfy interface, actual login happens in LoginScreen via supabase.auth.signInWithPassword
   const login = () => {};
 
   return (

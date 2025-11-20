@@ -13,11 +13,12 @@
       "bundleIdentifier": "com.aihomedecoratornative"
     },
     "android": {
-      "package": "com.aihomedecoratornative",
+      "package": "com.aihomedecorator.twa",
       "versionCode": 1,
       "googleServicesFile": "./google-services.json",
+
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
