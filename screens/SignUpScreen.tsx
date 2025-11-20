@@ -9,9 +9,9 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LogoIcon } from "../components/Icons";
 import { supabase } from "../lib/supabase";
 
 const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
@@ -56,7 +56,12 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
-            <LogoIcon style={styles.logo} />
+            {/* Updated to use your provided logo */}
+            <Image
+              source={require("../assets/images/icon.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Join the future of home design</Text>
           </View>
@@ -153,9 +158,10 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
-    width: 80,
-    height: 80,
+    width: 100,
+    height: 100,
     marginBottom: 24,
+    borderRadius: 20,
   },
   title: {
     fontSize: 32,

@@ -1,7 +1,6 @@
 import React, { ReactNode } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LogoIcon } from "./Icons";
 
 type HeaderProps = {
   children?: ReactNode;
@@ -14,7 +13,12 @@ const Header: React.FC<HeaderProps> = ({ children }) => {
     <View style={[styles.header, { paddingTop: insets.top }]}>
       <View style={styles.headerNav}>
         <View style={styles.headerLogoContainer}>
-          <LogoIcon style={{ width: 28, height: 28 }} />
+          {/* Updated to use your provided logo */}
+          <Image
+            source={require("../assets/images/icon.png")}
+            style={{ width: 32, height: 32, borderRadius: 8 }}
+            resizeMode="contain"
+          />
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitle}>AI Decorator</Text>
           </View>
@@ -27,8 +31,7 @@ const Header: React.FC<HeaderProps> = ({ children }) => {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#0F172A", // Match app background for seamless look
-    // Removed border for cleaner look, rely on content separation
+    backgroundColor: "#0F172A",
   },
   headerNav: {
     flexDirection: "row",
@@ -50,10 +53,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     letterSpacing: 0.5,
-  },
-  headerSubtitle: {
-    color: "#94A3B8",
-    fontSize: 11,
   },
 });
 
