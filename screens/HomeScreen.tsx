@@ -6,16 +6,17 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
-  Alert,
+  Alert, // Keep for fallback errors
   Share,
   TextInput,
   Dimensions,
   Platform,
   Modal,
   Linking,
+  FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Picker } from "@react-native-picker/picker";
+// Removed native Picker import
 import { useFocusEffect } from "@react-navigation/native";
 import { Style } from "../types";
 import { ROOM_TYPES, STYLE_CATEGORIES } from "../constants";
@@ -39,11 +40,104 @@ import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system/legacy";
 import { CameraView, Camera } from "expo-camera";
 
-const { width } = Dimensions.get("window");
-const isSmallScreen = width < 768;
+// --- 1. NEW COMPONENT: Custom Alert Modal (Fixes Image 1) ---
+const CustomAlertModal: React.FC<{
+  visible: boolean;
+  title: string;
+  message: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  confirmText: string;
+}> = ({ visible, title, message, onCancel, onConfirm, confirmText }) => (
+  <Modal transparent visible={visible} animationType="fade">
+    <View style={styles.modalOverlay}>
+      <View style={styles.customAlertCard}>
+        <Text style={styles.alertTitle}>{title}</Text>
+        <Text style={styles.alertMessage}>{message}</Text>
+        <View style={styles.alertActions}>
+          <TouchableOpacity onPress={onCancel} style={styles.alertBtnCancel}>
+            <Text style={styles.alertBtnTextCancel}>CANCEL</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onConfirm} style={styles.alertBtnConfirm}>
+            <Text style={styles.alertBtnTextConfirm}>{confirmText}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  </Modal>
+);
 
-// --- Components ---
+// --- 2. NEW COMPONENT: Custom Picker Modal (Fixes Image 2) ---
+const RoomTypePicker: React.FC<{
+  value: string;
+  onSelect: (val: string) => void;
+}> = ({ value, onSelect }) => {
+  const [modalVisible, setModalVisible] = useState(false);
 
+  return (
+    <>
+      <TouchableOpacity
+        style={styles.customPickerButton}
+        onPress={() => setModalVisible(true)}
+      >
+        <Text
+          style={[
+            styles.customPickerText,
+            !value && { color: "#94A3B8" }, // Gray if placeholder
+          ]}
+        >
+          {value || "Select Room Type..."}
+        </Text>
+        <AccordionChevronIcon style={{ color: "#94A3B8" }} />
+      </TouchableOpacity>
+
+      <Modal transparent visible={modalVisible} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.pickerModalContainer}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>Select Room Type</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Text style={styles.pickerCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={ROOM_TYPES}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.pickerItem,
+                    item === value && styles.pickerItemActive,
+                  ]}
+                  onPress={() => {
+                    onSelect(item);
+                    setModalVisible(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.pickerItemText,
+                      item === value && styles.pickerItemTextActive,
+                    ]}
+                  >
+                    {item}
+                  </Text>
+                  {item === value && (
+                    <View style={styles.checkmark}>
+                      <Text style={{ color: "white", fontSize: 12 }}>✓</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+};
+
+// --- 3. FIX: Camera Modal Layout ---
 const CameraModal: React.FC<{
   isVisible: boolean;
   onClose: () => void;
@@ -66,8 +160,13 @@ const CameraModal: React.FC<{
       onRequestClose={onClose}
     >
       <View style={{ flex: 1, backgroundColor: "#000" }}>
-        <CameraView style={{ flex: 1 }} facing="back" ref={cameraRef} />
-        <SafeAreaView style={styles.cameraOverlay}>
+        {/* FIX: Use absoluteFill so camera fills screen behind controls */}
+        <CameraView
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          ref={cameraRef}
+        />
+        <SafeAreaView style={styles.cameraOverlay} pointerEvents="box-none">
           <TouchableOpacity onPress={onClose} style={styles.cameraCloseBtn}>
             <Text style={styles.cameraCloseText}>Cancel</Text>
           </TouchableOpacity>
@@ -84,6 +183,8 @@ const CameraModal: React.FC<{
     </Modal>
   );
 };
+
+// --- Main Components (Unchanged Logic, just moved styles) ---
 
 const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
   onImageSelected,
@@ -298,6 +399,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     STYLE_CATEGORIES[0].name
   );
   const [credits, setCredits] = useState(0);
+  const [isCreditAlertVisible, setIsCreditAlertVisible] = useState(false); // Custom Alert State
+
   const { session, logout } = useAuth();
 
   useFocusEffect(
@@ -367,17 +470,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
 
     if (credits < creditCost) {
-      Alert.alert(
-        "Out of Credits",
-        "You need more credits to continue decorating.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Get Credits",
-            onPress: () => Linking.openURL("https://aihomedecorator.com/"),
-          },
-        ]
-      );
+      // SHOW CUSTOM ALERT
+      setIsCreditAlertVisible(true);
       return;
     }
 
@@ -431,6 +525,19 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+      {/* CUSTOM ALERT COMPONENT */}
+      <CustomAlertModal
+        visible={isCreditAlertVisible}
+        title="Out of Credits"
+        message="You need more credits to continue decorating."
+        onCancel={() => setIsCreditAlertVisible(false)}
+        onConfirm={() => {
+          setIsCreditAlertVisible(false);
+          Linking.openURL("https://aihomedecorator.com/");
+        }}
+        confirmText="GET CREDITS"
+      />
+
       <Header>
         <TouchableOpacity onPress={logout} style={styles.headerBtn}>
           <Text style={styles.headerBtnText}>Log Out</Text>
@@ -471,24 +578,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Room Type</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={roomType}
-                    onValueChange={setRoomType}
-                    style={styles.picker}
-                    itemStyle={{ color: "white" }}
-                    dropdownIconColor="white"
-                  >
-                    <Picker.Item
-                      label="Select Room Type..."
-                      value=""
-                      enabled={false}
-                    />
-                    {ROOM_TYPES.map((t) => (
-                      <Picker.Item key={t} label={t} value={t} />
-                    ))}
-                  </Picker>
-                </View>
+                {/* REPLACED NATIVE PICKER WITH CUSTOM COMPONENT */}
+                <RoomTypePicker value={roomType} onSelect={setRoomType} />
               </View>
             </View>
 
@@ -642,6 +733,136 @@ const styles = StyleSheet.create({
   },
   headerBtnText: { color: "#F8FAFC", fontSize: 12, fontWeight: "600" },
 
+  // --- Styles for Custom Picker & Modal ---
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)", // Dark backdrop
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  // Custom Alert
+  customAlertCard: {
+    backgroundColor: "#1E293B",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    maxWidth: 340,
+    borderWidth: 1,
+    borderColor: "#334155",
+    alignItems: "center",
+  },
+  alertTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#F8FAFC",
+    marginBottom: 12,
+  },
+  alertMessage: {
+    fontSize: 15,
+    color: "#94A3B8",
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  alertActions: {
+    flexDirection: "row",
+    width: "100%",
+    justifyContent: "flex-end",
+    gap: 16,
+  },
+  alertBtnCancel: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  alertBtnTextCancel: {
+    color: "#6366F1", // Indigo
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  alertBtnConfirm: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  alertBtnTextConfirm: {
+    color: "#6366F1",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+
+  // Custom Picker
+  customPickerButton: {
+    backgroundColor: "#0F172A",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#334155",
+    height: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+  },
+  customPickerText: {
+    color: "#F8FAFC",
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  pickerModalContainer: {
+    backgroundColor: "#1E293B",
+    borderRadius: 24,
+    width: "100%",
+    maxHeight: "80%", // Don't take full height
+    borderWidth: 1,
+    borderColor: "#334155",
+    overflow: "hidden",
+  },
+  pickerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#334155",
+    backgroundColor: "#0F172A",
+  },
+  pickerTitle: {
+    color: "#F8FAFC",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  pickerCloseText: {
+    color: "#6366F1",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  pickerItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#334155",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  pickerItemActive: {
+    backgroundColor: "rgba(99,102,241,0.15)", // Highlight active item
+  },
+  pickerItemText: {
+    color: "#CBD5E1",
+    fontSize: 16,
+  },
+  pickerItemTextActive: {
+    color: "#818CF8",
+    fontWeight: "700",
+  },
+  checkmark: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#6366F1",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   // Error
   errorBanner: {
     backgroundColor: "rgba(239,68,68,0.15)",
@@ -690,7 +911,7 @@ const styles = StyleSheet.create({
 
   // Common Buttons
   actionButton: {
-    flex: 1, // --- FIXED: Ensures equal width for all buttons
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -781,14 +1002,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 4,
   },
-  pickerContainer: {
-    backgroundColor: "#0F172A",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#334155",
-    overflow: "hidden",
-  },
-  picker: { color: "#FFF", height: Platform.OS === "ios" ? 120 : 50 },
+  // OLD PICKER STYLES REMOVED (pickerContainer, picker)
 
   // Segmented Control
   segmentedControl: {
