@@ -532,7 +532,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         onCancel={() => setIsCreditAlertVisible(false)}
         onConfirm={() => {
           setIsCreditAlertVisible(false);
-          Linking.openURL("https://aihomedecorator.com/");
+          // --- CHANGED: Navigate to BuyCredits screen instead of opening website ---
+          navigation.navigate("BuyCredits");
         }}
         confirmText="GET CREDITS"
       />
