@@ -4,3 +4,7 @@ declare module "@env" {
   export const SUPABASE_ANON_KEY: string;
   export const BACKEND_URL: string; // If you decide to move the backend URL to .env
 }
+
+// --- ADD THESE LINES ---
+export const REVENUECAT_ANDROID_KEY: string;
+// export const REVENUECAT_APPLE_KEY: string;
