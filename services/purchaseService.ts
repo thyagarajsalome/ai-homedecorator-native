@@ -4,7 +4,7 @@ import Purchases, { PurchasesPackage } from "react-native-purchases";
 // 🟢 TODO: PASTE YOUR REVENUECAT PUBLIC SDK KEYS HERE
 const API_KEYS = {
   apple: "", // Leave blank if not on iOS yet
-  google: "REVENUECAT_ANDROID_KEY",
+  google: "goog_GbwokSEambLYaNwIKSvvPlzBNMS",
 };
 
 export const initPurchases = async () => {
