@@ -198,7 +198,6 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
       return;
     }
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.5,
@@ -533,7 +532,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         onCancel={() => setIsCreditAlertVisible(false)}
         onConfirm={() => {
           setIsCreditAlertVisible(false);
-          Linking.openURL("https://aihomedecorator.com/");
+          // --- CHANGED: Navigate to BuyCredits screen instead of opening website ---
+          navigation.navigate("BuyCredits");
         }}
         confirmText="GET CREDITS"
       />
