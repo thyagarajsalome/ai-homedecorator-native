@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PurchasesPackage } from "react-native-purchases";
@@ -17,10 +16,14 @@ import {
   purchasePackage,
 } from "../services/purchaseService";
 import { useAuth } from "../context/AuthContext";
-import { ArrowLeftIcon } from "react-native-heroicons/outline"; // Or use your Icons.tsx
+import { supabase } from "../lib/supabase"; // <--- IMPORT SUPABASE
 
-// 🟢 Ensure you import your specific Icon component if you don't have heroicons
-import { AccordionChevronIcon } from "../components/Icons"; // Fallback icon
+// --- 1. EXACT IDENTIFIERS FROM YOUR SCREENSHOT ---
+const CREDIT_AMOUNTS: { [key: string]: number } = {
+  credits_15: 15,
+  credits_50: 50,
+  credits_120: 120,
+};
 
 const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
@@ -43,13 +46,61 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const onPurchase = async (pack: PurchasesPackage) => {
+    // 1. Check login
+    if (!session?.user) {
+      Alert.alert("Error", "You must be logged in to buy credits.");
+      return;
+    }
+
     try {
       setLoading(true);
+
+      // 2. Perform the transaction via RevenueCat
       await purchasePackage(pack);
-      Alert.alert("Success", "Credits added! It may take a moment to update.");
-      navigation.goBack();
-    } catch (e) {
-      console.log("Purchase cancelled");
+
+      // 3. Calculate Credits to Add
+      // We match the pack.product.identifier (e.g., "credits_15") to our mapping
+      const creditsToAdd = CREDIT_AMOUNTS[pack.product.identifier] || 15; // Fallback to 15 if ID not found
+
+      // 4. Fulfillment: Update Supabase
+      // Fetch current credits first
+      const { data: profile, error: fetchError } = await supabase
+        .from("user_profiles")
+        .select("generation_credits")
+        .eq("id", session.user.id)
+        .single();
+
+      if (fetchError) {
+        console.error("Error fetching profile:", fetchError);
+        throw new Error("Could not fetch user profile to add credits.");
+      }
+
+      const currentCredits = profile?.generation_credits || 0;
+      const newCreditBalance = currentCredits + creditsToAdd;
+
+      // Update the database with the new total
+      const { error: updateError } = await supabase
+        .from("user_profiles")
+        .update({ generation_credits: newCreditBalance })
+        .eq("id", session.user.id);
+
+      if (updateError) {
+        console.error("Error updating credits:", updateError);
+        throw new Error(
+          "Payment successful, but failed to save credits to database."
+        );
+      }
+
+      Alert.alert("Success", `Added ${creditsToAdd} credits to your account!`);
+      navigation.goBack(); // Go back to Home to see updated credits
+    } catch (e: any) {
+      if (!e.userCancelled) {
+        console.error(e);
+        Alert.alert(
+          "Error",
+          e.message || "Purchase failed. Please contact support."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -91,6 +142,8 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   <Text style={styles.packDesc}>
                     {item.product.description}
                   </Text>
+                  {/* Optional: Debug text to see the ID you are buying */}
+                  {/* <Text style={{color:'#666', fontSize: 10}}>{item.product.identifier}</Text> */}
                 </View>
                 <View style={styles.buyButton}>
                   <Text style={styles.priceText}>
@@ -102,7 +155,7 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             ListEmptyComponent={
               <Text style={styles.emptyText}>
                 No packages found.{"\n"}
-                (Make sure you are a License Tester if in Dev mode)
+                (If testing on emulator, ensure you're a License Tester)
               </Text>
             }
           />
