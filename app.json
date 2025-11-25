@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "AiHomeDecoratorNative",
+    "name": "Ai Home Decorator",
     "slug": "AiHomeDecoratorNative",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,7 +16,6 @@
       "package": "com.aihomedecorator.twa",
       "versionCode": 6,
       "googleServicesFile": "./google-services.json",
-
       "adaptiveIcon": {
         "monochromeImage": "./assets/images/android-icon-monochrome.png",
         "backgroundColor": "#ffffff"
@@ -24,14 +23,12 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
         "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.READ_MEDIA_AUDIO"
+        "com.android.vending.BILLING"
       ]
     },
     "web": {
@@ -67,6 +64,19 @@
         "expo-media-library",
         {
           "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos to your gallery."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "2.0.21",
+            "minSdkVersion": 24,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0",
+            "usesCleartextTraffic": true
+          }
         }
       ]
     ],
