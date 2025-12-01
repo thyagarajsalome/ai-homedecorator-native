@@ -6,17 +6,12 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
-  Alert, // Keep for fallback errors
-  Share,
+  Alert,
   TextInput,
-  Dimensions,
-  Platform,
   Modal,
-  Linking,
   FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-// Removed native Picker import
 import { useFocusEffect } from "@react-navigation/native";
 import { Style } from "../types";
 import { ROOM_TYPES, STYLE_CATEGORIES } from "../constants";
@@ -37,10 +32,13 @@ import { supabase } from "../lib/supabase";
 
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
-import * as FileSystem from "expo-file-system/legacy";
 import { CameraView, Camera } from "expo-camera";
 
-// --- 1. NEW COMPONENT: Custom Alert Modal (Fixes Image 1) ---
+// --- NEW IMPORTS FOR SHARING & WATERMARK ---
+import ViewShot, { captureRef } from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
+
+// --- 1. Custom Alert Modal ---
 const CustomAlertModal: React.FC<{
   visible: boolean;
   title: string;
@@ -67,7 +65,7 @@ const CustomAlertModal: React.FC<{
   </Modal>
 );
 
-// --- 2. NEW COMPONENT: Custom Picker Modal (Fixes Image 2) ---
+// --- 2. Custom Picker Modal ---
 const RoomTypePicker: React.FC<{
   value: string;
   onSelect: (val: string) => void;
@@ -137,7 +135,7 @@ const RoomTypePicker: React.FC<{
   );
 };
 
-// --- 3. FIX: Camera Modal Layout ---
+// --- 3. Camera Modal ---
 const CameraModal: React.FC<{
   isVisible: boolean;
   onClose: () => void;
@@ -160,7 +158,6 @@ const CameraModal: React.FC<{
       onRequestClose={onClose}
     >
       <View style={{ flex: 1, backgroundColor: "#000" }}>
-        {/* FIX: Use absoluteFill so camera fills screen behind controls */}
         <CameraView
           style={StyleSheet.absoluteFill}
           facing="back"
@@ -184,7 +181,7 @@ const CameraModal: React.FC<{
   );
 };
 
-// --- Main Components (Unchanged Logic, just moved styles) ---
+// --- Main Components ---
 
 const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
   onImageSelected,
@@ -298,19 +295,34 @@ const InspirationGallery: React.FC = () => {
   );
 };
 
+// --- UPDATED GENERATED IMAGE DISPLAY WITH WATERMARK & SHARING FIX ---
 const GeneratedImageDisplay: React.FC<{
   sourceImage: string;
   generatedImage: string;
   onReset: () => void;
 }> = ({ sourceImage, generatedImage, onReset }) => {
-  const saveImageToFile = async (base64Data: string): Promise<string> => {
-    const filename = FileSystem.cacheDirectory + `decorated-${Date.now()}.jpg`;
-    await FileSystem.writeAsStringAsync(filename, base64Data, {
-      encoding: "base64",
-    });
-    return filename;
+  const viewShotRef = useRef<any>(null); // Ref for capturing the watermark image
+  const [isSharing, setIsSharing] = useState(false);
+
+  // 1. Capture the view (Image + Watermark) to a local file
+  const captureWatermarkedImage = async () => {
+    try {
+      if (viewShotRef.current) {
+        const uri = await captureRef(viewShotRef, {
+          format: "jpg",
+          quality: 0.9,
+          result: "tmpfile",
+        });
+        return uri;
+      }
+    } catch (error) {
+      console.error("Capture failed", error);
+      Alert.alert("Error", "Failed to prepare image for sharing.");
+    }
+    return null;
   };
 
+  // 2. Download: Save the watermarked version to gallery
   const handleDownload = async () => {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -318,41 +330,74 @@ const GeneratedImageDisplay: React.FC<{
         Alert.alert("Permission needed", "We need permission to save photos.");
         return;
       }
-      const base64Data = generatedImage.split(",")[1];
-      const fileUri = await saveImageToFile(base64Data);
-      await MediaLibrary.saveToLibraryAsync(fileUri);
-      Alert.alert("Saved!", "Your new design has been saved to your gallery.");
+
+      const uri = await captureWatermarkedImage();
+      if (uri) {
+        await MediaLibrary.saveToLibraryAsync(uri);
+        Alert.alert("Saved!", "Your design (with watermark) has been saved.");
+      }
     } catch (error) {
       Alert.alert("Error", "Failed to save image.");
     }
   };
 
+  // 3. Share: Use expo-sharing to fix "Empty" WhatsApp error
   const handleShare = async () => {
+    if (isSharing) return;
+    setIsSharing(true);
     try {
-      const base64Data = generatedImage.split(",")[1];
-      const fileUri = await saveImageToFile(base64Data);
-      await Share.share({ title: "My AI Room Design", url: fileUri });
+      const uri = await captureWatermarkedImage();
+      if (uri) {
+        if (!(await Sharing.isAvailableAsync())) {
+          Alert.alert("Error", "Sharing is not available on this device");
+          return;
+        }
+        await Sharing.shareAsync(uri, {
+          mimeType: "image/jpeg",
+          dialogTitle: "Share your dream room",
+          UTI: "public.jpeg", // Helps on iOS
+        });
+      }
     } catch (error: any) {
       Alert.alert("Error", error.message);
+    } finally {
+      setIsSharing(false);
     }
   };
 
   return (
     <View style={styles.resultContainer}>
       <Text style={styles.resultHeader}>Your New Space</Text>
+
       <View style={styles.imageComparison}>
+        {/* Original Image */}
         <View style={styles.imageWrapper}>
           <View style={styles.imageBadge}>
             <Text style={styles.badgeText}>Original</Text>
           </View>
           <Image source={{ uri: sourceImage }} style={styles.resultImg} />
         </View>
-        <View style={styles.imageWrapper}>
-          <View style={[styles.imageBadge, { backgroundColor: "#6366F1" }]}>
-            <Text style={styles.badgeText}>AI Design</Text>
+
+        {/* AI Result - Wrapped in ViewShot for Watermark */}
+        <ViewShot
+          ref={viewShotRef}
+          style={styles.watermarkWrapper}
+          options={{ format: "jpg", quality: 0.9 }}
+        >
+          <View style={styles.imageWrapperNoMargin}>
+            <View style={[styles.imageBadge, { backgroundColor: "#6366F1" }]}>
+              <Text style={styles.badgeText}>AI Design</Text>
+            </View>
+            <Image source={{ uri: generatedImage }} style={styles.resultImg} />
           </View>
-          <Image source={{ uri: generatedImage }} style={styles.resultImg} />
-        </View>
+
+          {/* THE WATERMARK */}
+          <View style={styles.watermarkFooter}>
+            <Text style={styles.watermarkText}>
+              This image is decorated by Ai Home Decorator (aihomedecorator.com)
+            </Text>
+          </View>
+        </ViewShot>
       </View>
 
       <View style={styles.resultActions}>
@@ -373,9 +418,10 @@ const GeneratedImageDisplay: React.FC<{
         <TouchableOpacity
           onPress={handleShare}
           style={[styles.actionButton, styles.accentButton]}
+          disabled={isSharing}
         >
           <ShareIcon style={styles.btnIcon} />
-          <Text style={styles.btnText}>Share</Text>
+          <Text style={styles.btnText}>{isSharing ? "..." : "Share"}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -398,7 +444,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     STYLE_CATEGORIES[0].name
   );
   const [credits, setCredits] = useState(0);
-  const [isCreditAlertVisible, setIsCreditAlertVisible] = useState(false); // Custom Alert State
+  const [isCreditAlertVisible, setIsCreditAlertVisible] = useState(false);
 
   const { session, logout } = useAuth();
 
@@ -469,7 +515,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
 
     if (credits < creditCost) {
-      // SHOW CUSTOM ALERT
       setIsCreditAlertVisible(true);
       return;
     }
@@ -524,7 +569,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
-      {/* CUSTOM ALERT COMPONENT */}
       <CustomAlertModal
         visible={isCreditAlertVisible}
         title="Out of Credits"
@@ -532,7 +576,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         onCancel={() => setIsCreditAlertVisible(false)}
         onConfirm={() => {
           setIsCreditAlertVisible(false);
-          Linking.openURL("https://aihomedecorator.com/");
+          navigation.navigate("BuyCredits");
         }}
         confirmText="GET CREDITS"
       />
@@ -556,7 +600,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </>
         ) : (
           <View style={styles.workspace}>
-            {/* Step 1: Image Preview & Type */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View style={styles.stepBadge}>
@@ -577,12 +620,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Room Type</Text>
-                {/* REPLACED NATIVE PICKER WITH CUSTOM COMPONENT */}
                 <RoomTypePicker value={roomType} onSelect={setRoomType} />
               </View>
             </View>
 
-            {/* Step 2: Style Selection */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View style={styles.stepBadge}>
@@ -696,7 +737,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               )}
             </View>
 
-            {/* Floating Action Footer */}
             <View style={styles.generateSection}>
               <TouchableOpacity
                 style={styles.generateBtn}
@@ -735,12 +775,11 @@ const styles = StyleSheet.create({
   // --- Styles for Custom Picker & Modal ---
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.7)", // Dark backdrop
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
-  // Custom Alert
   customAlertCard: {
     backgroundColor: "#1E293B",
     borderRadius: 20,
@@ -775,7 +814,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   alertBtnTextCancel: {
-    color: "#6366F1", // Indigo
+    color: "#6366F1",
     fontWeight: "700",
     fontSize: 14,
   },
@@ -789,7 +828,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  // Custom Picker
   customPickerButton: {
     backgroundColor: "#0F172A",
     borderRadius: 12,
@@ -810,7 +848,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#1E293B",
     borderRadius: 24,
     width: "100%",
-    maxHeight: "80%", // Don't take full height
+    maxHeight: "80%",
     borderWidth: 1,
     borderColor: "#334155",
     overflow: "hidden",
@@ -843,7 +881,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   pickerItemActive: {
-    backgroundColor: "rgba(99,102,241,0.15)", // Highlight active item
+    backgroundColor: "rgba(99,102,241,0.15)",
   },
   pickerItemText: {
     color: "#CBD5E1",
@@ -862,7 +900,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  // Error
   errorBanner: {
     backgroundColor: "rgba(239,68,68,0.15)",
     borderColor: "#EF4444",
@@ -873,7 +910,6 @@ const styles = StyleSheet.create({
   },
   errorText: { color: "#EF4444", textAlign: "center", fontSize: 14 },
 
-  // Upload Card
   uploadCard: {
     backgroundColor: "#1E293B",
     borderRadius: 24,
@@ -908,7 +944,6 @@ const styles = StyleSheet.create({
   },
   uploadActions: { width: "100%", gap: 12 },
 
-  // Common Buttons
   actionButton: {
     flex: 1,
     flexDirection: "row",
@@ -924,7 +959,6 @@ const styles = StyleSheet.create({
   btnText: { color: "#FFF", fontWeight: "600", fontSize: 14, marginLeft: 8 },
   btnIcon: { color: "#FFF" },
 
-  // Gallery
   gallerySection: { marginTop: 40 },
   sectionHeader: { marginBottom: 20 },
   sectionTitle: { fontSize: 20, fontWeight: "700", color: "#F8FAFC" },
@@ -952,7 +986,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  // Workspace
   workspace: { gap: 24 },
   card: {
     backgroundColor: "#1E293B",
@@ -1001,9 +1034,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 4,
   },
-  // OLD PICKER STYLES REMOVED (pickerContainer, picker)
 
-  // Segmented Control
   segmentedControl: {
     flexDirection: "row",
     backgroundColor: "#0F172A",
@@ -1021,7 +1052,6 @@ const styles = StyleSheet.create({
   segmentText: { color: "#94A3B8", fontWeight: "600" },
   segmentTextActive: { color: "#F8FAFC" },
 
-  // Style Grid
   styleList: { gap: 12 },
   accordion: {
     backgroundColor: "#0F172A",
@@ -1054,7 +1084,6 @@ const styles = StyleSheet.create({
   styleChipText: { color: "#CBD5E1", fontSize: 13 },
   styleChipTextActive: { color: "#FFF", fontWeight: "700" },
 
-  // Custom Input
   customInputContainer: {},
   infoBox: {
     backgroundColor: "rgba(139, 92, 246, 0.1)",
@@ -1082,7 +1111,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
-  // Generate Footer
   generateSection: { marginTop: 12, alignItems: "center" },
   generateBtn: {
     width: "100%",
@@ -1113,7 +1141,6 @@ const styles = StyleSheet.create({
   creditBadgeText: { color: "#FFF", fontWeight: "bold", fontSize: 12 },
   balanceText: { color: "#94A3B8", marginTop: 16, fontSize: 14 },
 
-  // Results
   resultContainer: { alignItems: "center", marginTop: 20 },
   resultHeader: {
     fontSize: 28,
@@ -1147,7 +1174,6 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
 
-  // Camera Modal
   cameraOverlay: { flex: 1, justifyContent: "space-between", padding: 20 },
   cameraCloseBtn: {
     alignSelf: "flex-end",
@@ -1171,6 +1197,30 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: "#FFF",
+  },
+
+  // --- NEW STYLES FOR WATERMARK ---
+  watermarkWrapper: {
+    backgroundColor: "#1E293B", // Match card background
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  imageWrapperNoMargin: {
+    position: "relative",
+  },
+  watermarkFooter: {
+    backgroundColor: "#0F172A", // Darker background for footer
+    paddingVertical: 10,
+    paddingHorizontal: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+  },
+  watermarkText: {
+    color: "#94A3B8", // Subtle gray text
+    fontSize: 10,
+    fontWeight: "500",
+    textAlign: "center",
   },
 });
 
