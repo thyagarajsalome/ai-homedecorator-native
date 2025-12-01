@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PurchasesPackage } from "react-native-purchases";
@@ -17,10 +16,7 @@ import {
   purchasePackage,
 } from "../services/purchaseService";
 import { useAuth } from "../context/AuthContext";
-import { ArrowLeftIcon } from "react-native-heroicons/outline"; // Or use your Icons.tsx
-
-// 🟢 Ensure you import your specific Icon component if you don't have heroicons
-import { AccordionChevronIcon } from "../components/Icons"; // Fallback icon
+// Notice: We NO LONGER import supabase here for updating credits!
 
 const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
@@ -43,13 +39,37 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const onPurchase = async (pack: PurchasesPackage) => {
+    // 1. Check login
+    if (!session?.user) {
+      Alert.alert("Error", "You must be logged in to buy credits.");
+      return;
+    }
+
     try {
       setLoading(true);
-      await purchasePackage(pack);
-      Alert.alert("Success", "Credits added! It may take a moment to update.");
-      navigation.goBack();
-    } catch (e) {
-      console.log("Purchase cancelled");
+
+      // 2. Perform the transaction via RevenueCat
+      // The payment happens here. RevenueCat validates it with Apple/Google.
+      const { customerInfo } = await purchasePackage(pack);
+
+      // 3. Success!
+      // We do NOT update Supabase here. Your new Edge Function does that securely.
+      // We wait 2 seconds to give the backend time to process, then alert the user.
+      setTimeout(() => {
+        Alert.alert(
+          "Purchase Successful",
+          "Your credits are being added! It may take a moment to appear."
+        );
+        navigation.goBack();
+      }, 2000);
+    } catch (e: any) {
+      if (!e.userCancelled) {
+        console.error(e);
+        Alert.alert(
+          "Error",
+          e.message || "Purchase failed. Please contact support."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -102,7 +122,7 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             ListEmptyComponent={
               <Text style={styles.emptyText}>
                 No packages found.{"\n"}
-                (Make sure you are a License Tester if in Dev mode)
+                (If testing on emulator, ensure you're a License Tester)
               </Text>
             }
           />
