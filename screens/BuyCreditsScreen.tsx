@@ -16,14 +16,7 @@ import {
   purchasePackage,
 } from "../services/purchaseService";
 import { useAuth } from "../context/AuthContext";
-import { supabase } from "../lib/supabase"; // <--- IMPORT SUPABASE
-
-// --- 1. EXACT IDENTIFIERS FROM YOUR SCREENSHOT ---
-const CREDIT_AMOUNTS: { [key: string]: number } = {
-  credits_15: 15,
-  credits_50: 50,
-  credits_120: 120,
-};
+// Notice: We NO LONGER import supabase here for updating credits!
 
 const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
@@ -56,43 +49,19 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setLoading(true);
 
       // 2. Perform the transaction via RevenueCat
-      await purchasePackage(pack);
+      // The payment happens here. RevenueCat validates it with Apple/Google.
+      const { customerInfo } = await purchasePackage(pack);
 
-      // 3. Calculate Credits to Add
-      // We match the pack.product.identifier (e.g., "credits_15") to our mapping
-      const creditsToAdd = CREDIT_AMOUNTS[pack.product.identifier] || 15; // Fallback to 15 if ID not found
-
-      // 4. Fulfillment: Update Supabase
-      // Fetch current credits first
-      const { data: profile, error: fetchError } = await supabase
-        .from("user_profiles")
-        .select("generation_credits")
-        .eq("id", session.user.id)
-        .single();
-
-      if (fetchError) {
-        console.error("Error fetching profile:", fetchError);
-        throw new Error("Could not fetch user profile to add credits.");
-      }
-
-      const currentCredits = profile?.generation_credits || 0;
-      const newCreditBalance = currentCredits + creditsToAdd;
-
-      // Update the database with the new total
-      const { error: updateError } = await supabase
-        .from("user_profiles")
-        .update({ generation_credits: newCreditBalance })
-        .eq("id", session.user.id);
-
-      if (updateError) {
-        console.error("Error updating credits:", updateError);
-        throw new Error(
-          "Payment successful, but failed to save credits to database."
+      // 3. Success!
+      // We do NOT update Supabase here. Your new Edge Function does that securely.
+      // We wait 2 seconds to give the backend time to process, then alert the user.
+      setTimeout(() => {
+        Alert.alert(
+          "Purchase Successful",
+          "Your credits are being added! It may take a moment to appear."
         );
-      }
-
-      Alert.alert("Success", `Added ${creditsToAdd} credits to your account!`);
-      navigation.goBack(); // Go back to Home to see updated credits
+        navigation.goBack();
+      }, 2000);
     } catch (e: any) {
       if (!e.userCancelled) {
         console.error(e);
@@ -142,8 +111,6 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   <Text style={styles.packDesc}>
                     {item.product.description}
                   </Text>
-                  {/* Optional: Debug text to see the ID you are buying */}
-                  {/* <Text style={{color:'#666', fontSize: 10}}>{item.product.identifier}</Text> */}
                 </View>
                 <View style={styles.buyButton}>
                   <Text style={styles.priceText}>
