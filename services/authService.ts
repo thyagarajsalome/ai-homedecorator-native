@@ -10,7 +10,7 @@ export const configureGoogleSignIn = () => {
   GoogleSignin.configure({
     // PASTE YOUR WEB CLIENT ID HERE (The one in the TOP box of Supabase)
     webClientId:
-      "170698981776-oan47rdg3iiedp859grd7icduvnjf68n.apps.googleusercontent.com",
+      "358218923651-hn0ll91f09t1bv3lu8583qc9ckjfmpri.apps.googleusercontent.com",
     offlineAccess: true,
   });
 };
