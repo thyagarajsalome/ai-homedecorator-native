@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
+import { GoogleSigninButton } from "@react-native-google-signin/google-signin";
+import { signInWithGoogle } from "../services/authService"; // <--- Import your new service
 
 const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -43,6 +45,18 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    const { error } = await signInWithGoogle();
+    setLoading(false);
+    if (error) {
+      // Don't alert if user just cancelled
+      if (error.message !== "Sign-in cancelled") {
+        Alert.alert("Google Login Error", error.message);
+      }
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -51,7 +65,6 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
-            {/* Updated Logo */}
             <Image
               source={require("../assets/images/icon.png")}
               style={styles.logo}
@@ -64,6 +77,22 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
 
           <View style={styles.form}>
+            {/* --- GOOGLE LOGIN BUTTON --- */}
+            <View style={styles.googleContainer}>
+              <GoogleSigninButton
+                size={GoogleSigninButton.Size.Wide}
+                color={GoogleSigninButton.Color.Dark}
+                onPress={handleGoogleLogin}
+                disabled={loading}
+              />
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or email</Text>
+                <View style={styles.dividerLine} />
+              </View>
+            </View>
+            {/* --------------------------- */}
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Email</Text>
               <TextInput
@@ -151,10 +180,10 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    marginBottom: 40,
+    marginBottom: 32,
   },
   logo: {
-    width: 100, // Increased size slightly
+    width: 100,
     height: 100,
     marginBottom: 24,
     borderRadius: 20,
@@ -176,6 +205,29 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     alignSelf: "center",
   },
+  // --- Google & Divider Styles ---
+  googleContainer: {
+    alignItems: "center",
+    marginBottom: 20,
+    width: "100%",
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 24,
+    width: "100%",
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#334155",
+  },
+  dividerText: {
+    color: "#94A3B8",
+    paddingHorizontal: 10,
+    fontSize: 14,
+  },
+  // -----------------------------
   inputGroup: {
     marginBottom: 20,
   },
