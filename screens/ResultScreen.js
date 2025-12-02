@@ -6,18 +6,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
-  PermissionsAndroid,
   Alert,
 } from "react-native";
 import ViewShot, { captureRef } from "react-native-view-shot";
-import Share from "react-native-share";
-
-// ... your other imports
+import * as Sharing from "expo-sharing"; // <--- 1. CHANGED IMPORT
 
 const ResultScreen = ({ route, navigation }) => {
-  // Assuming you get the AI image URI from route params or redux
-  // const { generatedImageUri } = route.params;
-  // For testing, I'll use a placeholder. Replace this with your actual variable.
+  // Replace with actual prop/param logic if needed
   const generatedImageUri =
     "https://via.placeholder.com/600x800.png?text=AI+Decorated+Image";
 
@@ -25,23 +20,19 @@ const ResultScreen = ({ route, navigation }) => {
   const [finalLocalImageUri, setFinalLocalImageUri] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // --- THE WATERMARK & CAPTURE LOGIC ---
   const generateWatermarkedImage = async () => {
     if (isProcessing) return;
     setIsProcessing(true);
 
     try {
-      // captureRef takes a snapshot of the View defined below with ref={viewShotRef}
       const uri = await captureRef(viewShotRef, {
         format: "jpg",
         quality: 0.9,
-        result: "tmpfile", // Crucial: saves to a temporary local file
+        result: "tmpfile",
       });
 
       console.log("Watermarked image saved to:", uri);
       setFinalLocalImageUri(uri);
-
-      // Once captured, immediately trigger sharing
       await shareFinalImage(uri);
     } catch (error) {
       console.error("Capture failed:", error);
@@ -51,57 +42,53 @@ const ResultScreen = ({ route, navigation }) => {
     }
   };
 
-  // --- THE SHARING LOGIC (Fixes WhatsApp issue) ---
+  // --- 2. UPDATED SHARING LOGIC ---
   const shareFinalImage = async (uriToShare) => {
     if (!uriToShare) {
       Alert.alert("Error", "No image to share.");
       return;
     }
 
-    // Ensure the URI has the file:// prefix for Android if it's missing
-    let correctUri = uriToShare;
-    if (Platform.OS === "android" && !correctUri.startsWith("file://")) {
-      correctUri = `file://${correctUri}`;
+    // Check if sharing is available on this device
+    if (!(await Sharing.isAvailableAsync())) {
+      Alert.alert("Error", "Sharing is not available on this device");
+      return;
     }
 
-    const shareOptions = {
-      title: "Share AI Decor",
-      message: "Check out my home decorated by AI Home Decorator!", // Optional message
-      url: correctUri, // Sharing the LOCAL file URI works with WhatsApp
-      type: "image/jpeg",
-      failOnCancel: false,
-    };
-
     try {
-      await Share.open(shareOptions);
-    } catch (error) {
-      if (error.message !== "User did not share") {
-        console.log("Share error:", error);
-        Alert.alert("Sharing Failed", "Could not open share dialog.");
+      // Expo Sharing handles the file:// prefix automatically in most cases,
+      // but ensuring it's there for Android doesn't hurt.
+      let correctUri = uriToShare;
+      if (Platform.OS === "android" && !correctUri.startsWith("file://")) {
+        correctUri = `file://${correctUri}`;
       }
+
+      await Sharing.shareAsync(correctUri, {
+        mimeType: "image/jpeg",
+        dialogTitle: "Share AI Decor",
+        UTI: "public.jpeg", // Helps on iOS
+      });
+    } catch (error) {
+      console.log("Share error:", error);
+      // Expo sharing usually doesn't throw on cancel, but just in case
+      Alert.alert("Sharing Failed", "Could not open share dialog.");
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* This ViewShot container is what gets captured.
-          We set collapsable={false} to ensure Android captures it correctly.
-          We use a white background so the watermark looks clean.
-       */}
       <ViewShot
         ref={viewShotRef}
         options={{ format: "jpg", quality: 0.9 }}
         style={styles.captureContainer}
         collapsable={false}
       >
-        {/* The AI Generated Image */}
         <Image
           source={{ uri: generatedImageUri }}
           style={styles.resultImage}
-          resizeMode="contain" // or "cover", depending on your layout desires
+          resizeMode="contain"
         />
 
-        {/* THE FOOTER WATERMARK */}
         <View style={styles.watermarkContainer}>
           <Text style={styles.watermarkText}>
             This image is decorated by Ai Home Decorator (aihomedecorator.com)
@@ -109,7 +96,6 @@ const ResultScreen = ({ route, navigation }) => {
         </View>
       </ViewShot>
 
-      {/* The Share Button */}
       <TouchableOpacity
         style={[styles.shareButton, isProcessing && styles.disabledButton]}
         onPress={generateWatermarkedImage}
@@ -131,11 +117,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 20,
   },
-  // The container that gets screenshotted
   captureContainer: {
     backgroundColor: "white",
-    padding: 10, // Add padding so the image and text aren't right against the edge
-    elevation: 5, // Optional shadow for looks
+    padding: 10,
+    elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -145,10 +130,9 @@ const styles = StyleSheet.create({
   },
   resultImage: {
     width: "100%",
-    height: 400, // Adjust height as needed for your design
+    height: 400,
     marginBottom: 10,
   },
-  // Watermark Styling
   watermarkContainer: {
     paddingVertical: 8,
     paddingHorizontal: 5,
