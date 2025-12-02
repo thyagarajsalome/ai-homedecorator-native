@@ -19,6 +19,8 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // screens/SignUpScreen.tsx
+
   const handleSignUp = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Please fill in all fields");
@@ -30,6 +32,11 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          // 👇 ADD THIS LINE
+          // This tells Supabase to open your app after the user clicks the email link
+          emailRedirectTo: "aihomedecoratornative://login",
+        },
       });
 
       if (error) {
@@ -37,8 +44,7 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       } else {
         Alert.alert(
           "Account Created",
-          "Please check your email to verify your account before logging in.",
-          [{ text: "Go to Login", onPress: () => navigation.navigate("Login") }]
+          "Please check your email to verify your account."
         );
       }
     } catch (error: any) {
@@ -47,7 +53,6 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setLoading(false);
     }
   };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView

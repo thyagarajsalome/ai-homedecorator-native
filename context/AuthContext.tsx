@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { supabase } from "../lib/supabase";
 import { Session } from "@supabase/supabase-js";
+import * as Linking from "expo-linking"; // <--- Import Linking
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -24,30 +25,66 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check active session on startup
+    // 1. Check active session on startup
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setIsLoading(false);
     });
 
-    // Listen for auth changes
+    // 2. Listen for auth changes (Login, Logout, Auto-refresh)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
-    return () => subscription.unsubscribe();
+    // 3. Handle Deep Links (Email Confirmation)
+    const handleDeepLink = async (url: string | null) => {
+      if (!url) return;
+
+      // Check if the URL contains authentication parameters (Implicit or PKCE)
+      // Example: aihomedecoratornative://login#access_token=...&refresh_token=...
+      if (url.includes("access_token") || url.includes("refresh_token")) {
+        try {
+          // Extract the fragment part of the URL (after the #)
+          const params = new URLSearchParams(url.split("#")[1]);
+          const accessToken = params.get("access_token");
+          const refreshToken = params.get("refresh_token");
+
+          if (accessToken && refreshToken) {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+          }
+        } catch (error) {
+          console.error("Deep link parsing error:", error);
+        }
+      }
+    };
+
+    // Listen for links if the app is already open
+    const linkingListener = Linking.addEventListener("url", (event) => {
+      handleDeepLink(event.url);
+    });
+
+    // Check if the app was opened by a link (cold start)
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink(url);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      linkingListener.remove();
+    };
   }, []);
 
   const logout = async () => {
     try {
-      // Attempt backend sign out
       await supabase.auth.signOut();
     } catch (error) {
-      console.log("Logout error (ignoring to force UI update):", error);
+      console.log("Logout error:", error);
     } finally {
-      // FORCE update local state to ensure navigation to Login screen happens
       setSession(null);
     }
   };
