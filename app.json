@@ -15,7 +15,6 @@
     "android": {
       "package": "com.aihomedecorator.twa",
       "versionCode": 7,
-      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "monochromeImage": "./assets/images/android-icon-monochrome.png",
         "backgroundColor": "#ffffff"
