@@ -7,7 +7,9 @@ import React, {
 } from "react";
 import { supabase } from "../lib/supabase";
 import { Session } from "@supabase/supabase-js";
-import * as Linking from "expo-linking"; // <--- Import Linking
+import * as Linking from "expo-linking";
+// 👇 IMPORT NEW FUNCTIONS
+import { identifyUser, logoutUser } from "../services/purchaseService";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -28,6 +30,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     // 1. Check active session on startup
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      // 👇 IDENTIFY USER IF SESSION EXISTS
+      if (session?.user) {
+        identifyUser(session.user.id);
+      }
       setIsLoading(false);
     });
 
@@ -36,6 +42,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      // 👇 HANDLE IDENTIFICATION ON CHANGE
+      if (session?.user) {
+        identifyUser(session.user.id);
+      } else {
+        logoutUser();
+      }
     });
 
     // 3. Handle Deep Links (Email Confirmation)
@@ -82,6 +94,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const logout = async () => {
     try {
       await supabase.auth.signOut();
+      // 👇 ENSURE LOGOUT FROM REVENUECAT
+      await logoutUser();
     } catch (error) {
       console.log("Logout error:", error);
     } finally {
