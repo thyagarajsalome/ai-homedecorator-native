@@ -10,13 +10,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PurchasesPackage } from "react-native-purchases";
-import {
-  initPurchases,
-  getPackages,
-  purchasePackage,
-} from "../services/purchaseService";
+import { getPackages, purchasePackage } from "../services/purchaseService";
 import { useAuth } from "../context/AuthContext";
-// Notice: We NO LONGER import supabase here for updating credits!
 
 const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
@@ -25,7 +20,8 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   useEffect(() => {
     const setup = async () => {
-      await initPurchases();
+      // Logic for initPurchases is now in AuthContext to handle user identity correctly.
+      // We just load the packages here.
       loadPackages();
     };
     setup();
@@ -49,12 +45,10 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setLoading(true);
 
       // 2. Perform the transaction via RevenueCat
-      // The payment happens here. RevenueCat validates it with Apple/Google.
       const { customerInfo } = await purchasePackage(pack);
 
       // 3. Success!
-      // We do NOT update Supabase here. Your new Edge Function does that securely.
-      // We wait 2 seconds to give the backend time to process, then alert the user.
+      // The backend webhook handles the credit update securely.
       setTimeout(() => {
         Alert.alert(
           "Purchase Successful",
@@ -120,10 +114,7 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               </TouchableOpacity>
             )}
             ListEmptyComponent={
-              <Text style={styles.emptyText}>
-                No packages found.{"\n"}
-                (If testing on emulator, ensure you're a License Tester)
-              </Text>
+              <Text style={styles.emptyText}>No packages found.{"\n"}</Text>
             }
           />
         )}
