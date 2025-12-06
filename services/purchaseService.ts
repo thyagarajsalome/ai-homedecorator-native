@@ -1,10 +1,9 @@
 import { Platform, Alert } from "react-native";
 import Purchases, { PurchasesPackage } from "react-native-purchases";
-import { REVENUECAT_ANDROID_KEY } from "@env";
 
 const API_KEYS = {
   apple: "", // Add iOS key if needed
-  google: REVENUECAT_ANDROID_KEY,
+  google: "goog_GbwokSEambLYaNwIKSvvPlzBNMS",
 };
 
 export const initPurchases = async () => {
