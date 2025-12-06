@@ -6,9 +6,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "./context/AuthContext";
 import RootNavigator from "./navigation/RootNavigator";
 
-// --- NEW: Initialize Google Sign-In ---
-import { configureGoogleSignIn } from "./services/authService";
-configureGoogleSignIn();
 // --------------------------------------
 
 const Root = () => (

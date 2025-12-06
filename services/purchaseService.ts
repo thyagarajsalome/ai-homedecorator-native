@@ -1,11 +1,9 @@
 import { Platform, Alert } from "react-native";
 import Purchases, { PurchasesPackage } from "react-native-purchases";
-import { REVENUECAT_ANDROID_KEY } from "@env"; // <--- Import this
 
-// 🟢 TODO: PASTE YOUR REVENUECAT PUBLIC SDK KEYS HERE
 const API_KEYS = {
-  apple: "",
-  google: REVENUECAT_ANDROID_KEY, // <--- Use the variable here
+  apple: "", // Add iOS key if needed
+  google: "goog_GbwokSEambLYaNwIKSvvPlzBNMS",
 };
 
 export const initPurchases = async () => {
@@ -20,7 +18,27 @@ export const initPurchases = async () => {
   }
 };
 
+// 👇 ADD THIS FUNCTION
+export const identifyUser = async (userId: string) => {
+  try {
+    // This links the RevenueCat user to your Supabase User ID
+    await Purchases.logIn(userId);
+  } catch (e) {
+    console.error("Error identifying user to RevenueCat", e);
+  }
+};
+
+// 👇 ADD THIS FUNCTION
+export const logoutUser = async () => {
+  try {
+    await Purchases.logOut();
+  } catch (e) {
+    console.error("Error logging out user from RevenueCat", e);
+  }
+};
+
 export const getPackages = async (): Promise<PurchasesPackage[]> => {
+  // ... (keep existing code)
   try {
     const offerings = await Purchases.getOfferings();
     if (
@@ -36,6 +54,7 @@ export const getPackages = async (): Promise<PurchasesPackage[]> => {
 };
 
 export const purchasePackage = async (pack: PurchasesPackage) => {
+  // ... (keep existing code)
   try {
     const { customerInfo } = await Purchases.purchasePackage(pack);
     return customerInfo;
