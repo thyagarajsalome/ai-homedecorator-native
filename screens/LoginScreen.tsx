@@ -6,24 +6,44 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
+import CustomAlert from "../components/CustomAlert"; // <--- Import CustomAlert
 
 const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // --- Custom Alert State ---
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    title: "",
+    message: "",
+    type: "success" as "success" | "error",
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    type: "success" | "error" = "success"
+  ) => {
+    setAlertConfig({ title, message, type });
+    setAlertVisible(true);
+  };
+  // ---------------------------
+
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert(
+      showAlert(
         "Missing Information",
-        "Please enter both your email and password."
+        "Please enter both your email and password.",
+        "error"
       );
       return;
     }
@@ -35,13 +55,53 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         password: password,
       });
 
-      if (error) Alert.alert("Login Failed", error.message);
+      if (error) {
+        showAlert("Login Failed", error.message, "error");
+      }
+      // Success is handled by AuthContext automatically
     } catch (error: any) {
-      Alert.alert("Error", error.message || "An unexpected error occurred");
+      showAlert(
+        "Error",
+        error.message || "An unexpected error occurred",
+        "error"
+      );
     } finally {
       setLoading(false);
     }
   };
+
+  // --- Forgot Password Logic ---
+  const handleForgotPassword = async () => {
+    if (!email) {
+      showAlert(
+        "Email Required",
+        "Please enter your email address first so we can send you a reset link.",
+        "error"
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: "aihomedecoratornative://reset-password", // Deep link (optional but recommended)
+      });
+
+      if (error) {
+        showAlert("Error", error.message, "error");
+      } else {
+        showAlert(
+          "Check Your Email",
+          `We have sent a password reset link to ${email}. Please check your inbox (and spam folder).`
+        );
+      }
+    } catch (error: any) {
+      showAlert("Error", error.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+  // -----------------------------
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -87,6 +147,17 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 onChangeText={setPassword}
                 secureTextEntry
               />
+              {/* Forgot Password Button */}
+              <TouchableOpacity
+                onPress={handleForgotPassword}
+                style={{ alignSelf: "flex-end", marginTop: 8 }}
+              >
+                <Text
+                  style={{ color: "#6366F1", fontSize: 13, fontWeight: "600" }}
+                >
+                  Forgot Password?
+                </Text>
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity
@@ -95,9 +166,11 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               disabled={loading}
               activeOpacity={0.8}
             >
-              <Text style={styles.buttonText}>
-                {loading ? "Signing in..." : "Sign In"}
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.buttonText}>Sign In</Text>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -130,6 +203,15 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </Text>
           </View>
         </ScrollView>
+
+        {/* --- Custom Alert Component --- */}
+        <CustomAlert
+          visible={alertVisible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          onClose={() => setAlertVisible(false)}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
