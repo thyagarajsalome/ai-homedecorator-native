@@ -29,8 +29,19 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setLoading(false);
   };
 
+  // 👇 HELPER FUNCTION: Calculates original price by doubling the current one
+  const getOriginalPrice = (priceString: string) => {
+    // Extracts the number, doubles it, and preserves currency symbols/formatting
+    const numericPart = priceString.replace(/[^0-9.]/g, "");
+    const numericValue = parseFloat(numericPart);
+    if (isNaN(numericValue)) return "";
+
+    const originalValue = numericValue * 2;
+    // Replace the old number with the new one in the original string
+    return priceString.replace(/[0-9.,]+/, originalValue.toLocaleString());
+  };
+
   const onPurchase = async (pack: PurchasesPackage) => {
-    // 1. Check login
     if (!session?.user) {
       Alert.alert("Error", "You must be logged in to buy credits.");
       return;
@@ -38,11 +49,7 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
     try {
       setLoading(true);
-
-      // 2. Perform the transaction via RevenueCat
       await purchasePackage(pack);
-
-      // 3. Success!
       setTimeout(() => {
         Alert.alert(
           "Purchase Successful",
@@ -78,7 +85,6 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <Text style={styles.title}>Get More Credits</Text>
         <Text style={styles.subtitle}>Choose a pack to continue creating.</Text>
 
-        {/* --- NEW: SALE BANNER --- */}
         <View style={styles.saleBanner}>
           <Text style={styles.saleBannerText}>
             🔥 LIMITED TIME: 50% PRICE DROP! 🔥
@@ -111,15 +117,21 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   </Text>
                 </View>
 
-                {/* --- UPDATED: BUY ACTION AREA WITH DISCOUNT BADGE --- */}
                 <View style={styles.buyActionArea}>
                   <View style={styles.priceBadge}>
                     <Text style={styles.priceBadgeText}>50% OFF</Text>
                   </View>
-                  <View style={styles.buyButton}>
-                    <Text style={styles.priceText}>
-                      {item.product.priceString}
+
+                  {/* 👇 UPDATED: Price area with strikethrough */}
+                  <View style={styles.priceContainer}>
+                    <Text style={styles.oldPriceText}>
+                      {getOriginalPrice(item.product.priceString)}
                     </Text>
+                    <View style={styles.buyButton}>
+                      <Text style={styles.priceText}>
+                        {item.product.priceString}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -143,7 +155,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 32, fontWeight: "800", color: "#F8FAFC", marginBottom: 8 },
   subtitle: { fontSize: 16, color: "#94A3B8" },
 
-  /* --- NEW: SALE BANNER STYLES --- */
   saleBanner: {
     backgroundColor: "rgba(99, 102, 241, 0.15)",
     borderWidth: 1,
@@ -167,7 +178,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#1E293B",
     borderRadius: 20,
-    padding: 16, // Adjusted padding for balance
+    padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -183,7 +194,6 @@ const styles = StyleSheet.create({
   },
   packDesc: { fontSize: 13, color: "#94A3B8" },
 
-  /* --- NEW: BUY ACTION AREA & BADGE STYLES --- */
   buyActionArea: {
     alignItems: "center",
   },
@@ -198,6 +208,18 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 10,
     fontWeight: "bold",
+  },
+
+  /* 👇 NEW: STYLES FOR PRICE STRIKETHROUGH */
+  priceContainer: {
+    alignItems: "center",
+    gap: 4,
+  },
+  oldPriceText: {
+    color: "#94A3B8",
+    fontSize: 12,
+    textDecorationLine: "line-through",
+    fontWeight: "500",
   },
 
   buyButton: {
