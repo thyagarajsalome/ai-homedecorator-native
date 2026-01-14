@@ -19,12 +19,7 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { session } = useAuth();
 
   useEffect(() => {
-    const setup = async () => {
-      // Logic for initPurchases is now in AuthContext to handle user identity correctly.
-      // We just load the packages here.
-      loadPackages();
-    };
-    setup();
+    loadPackages();
   }, []);
 
   const loadPackages = async () => {
@@ -45,10 +40,9 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setLoading(true);
 
       // 2. Perform the transaction via RevenueCat
-      const { customerInfo } = await purchasePackage(pack);
+      await purchasePackage(pack);
 
       // 3. Success!
-      // The backend webhook handles the credit update securely.
       setTimeout(() => {
         Alert.alert(
           "Purchase Successful",
@@ -84,6 +78,16 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <Text style={styles.title}>Get More Credits</Text>
         <Text style={styles.subtitle}>Choose a pack to continue creating.</Text>
 
+        {/* --- NEW: SALE BANNER --- */}
+        <View style={styles.saleBanner}>
+          <Text style={styles.saleBannerText}>
+            🔥 LIMITED TIME: 50% PRICE DROP! 🔥
+          </Text>
+          <Text style={styles.saleSubtext}>
+            Get premium designs at half the price.
+          </Text>
+        </View>
+
         {loading ? (
           <ActivityIndicator
             size="large"
@@ -106,10 +110,17 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     {item.product.description}
                   </Text>
                 </View>
-                <View style={styles.buyButton}>
-                  <Text style={styles.priceText}>
-                    {item.product.priceString}
-                  </Text>
+
+                {/* --- UPDATED: BUY ACTION AREA WITH DISCOUNT BADGE --- */}
+                <View style={styles.buyActionArea}>
+                  <View style={styles.priceBadge}>
+                    <Text style={styles.priceBadgeText}>50% OFF</Text>
+                  </View>
+                  <View style={styles.buyButton}>
+                    <Text style={styles.priceText}>
+                      {item.product.priceString}
+                    </Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             )}
@@ -131,31 +142,73 @@ const styles = StyleSheet.create({
   content: { padding: 24, flex: 1 },
   title: { fontSize: 32, fontWeight: "800", color: "#F8FAFC", marginBottom: 8 },
   subtitle: { fontSize: 16, color: "#94A3B8" },
+
+  /* --- NEW: SALE BANNER STYLES --- */
+  saleBanner: {
+    backgroundColor: "rgba(99, 102, 241, 0.15)",
+    borderWidth: 1,
+    borderColor: "#6366F1",
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 16,
+    alignItems: "center",
+  },
+  saleBannerText: {
+    color: "#818CF8",
+    fontWeight: "900",
+    fontSize: 16,
+  },
+  saleSubtext: {
+    color: "#94A3B8",
+    fontSize: 12,
+    marginTop: 4,
+  },
+
   card: {
     backgroundColor: "#1E293B",
     borderRadius: 20,
-    padding: 20,
+    padding: 16, // Adjusted padding for balance
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#334155",
   },
-  cardInfo: { flex: 1, marginRight: 16 },
+  cardInfo: { flex: 1, marginRight: 12 },
   packTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "white",
     marginBottom: 4,
   },
-  packDesc: { fontSize: 14, color: "#94A3B8" },
+  packDesc: { fontSize: 13, color: "#94A3B8" },
+
+  /* --- NEW: BUY ACTION AREA & BADGE STYLES --- */
+  buyActionArea: {
+    alignItems: "center",
+  },
+  priceBadge: {
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  priceBadgeText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+
   buyButton: {
     backgroundColor: "#6366F1",
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
+    minWidth: 85,
+    alignItems: "center",
   },
-  priceText: { color: "white", fontWeight: "bold", fontSize: 16 },
+  priceText: { color: "white", fontWeight: "bold", fontSize: 15 },
   emptyText: {
     color: "#64748B",
     textAlign: "center",

@@ -8,12 +8,13 @@ import React, {
 import { supabase } from "../lib/supabase";
 import { Session } from "@supabase/supabase-js";
 import * as Linking from "expo-linking";
-// 👇 UPDATED IMPORT: Added initPurchases
 import {
   identifyUser,
   logoutUser,
   initPurchases,
 } from "../services/purchaseService";
+// 👇 Import the notification service
+import { registerForPushNotificationsAsync } from "../services/notificationService";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -34,8 +35,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     // Wrapper function to handle async initialization order
     const initializeApp = async () => {
       try {
-        // 1. 👇 Initialize RevenueCat FIRST
-        // This ensures the SDK is ready before we try to log the user in.
+        // 1. Initialize RevenueCat FIRST
         await initPurchases();
 
         // 2. Check active Supabase session
@@ -44,9 +44,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         } = await supabase.auth.getSession();
         setSession(session);
 
-        // 3. If user is logged in, link them to RevenueCat
+        // 3. If user is logged in, link identity and register for notifications
         if (session?.user) {
-          await identifyUser(session.user.id);
+          await identifyUser(session.user.id); //
+          // 👇 Register notifications on app start if session exists
+          registerForPushNotificationsAsync(session.user.id);
         }
       } catch (error) {
         console.error("Initialization error:", error);
@@ -61,14 +63,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     // 4. Listen for auth changes (Login, Logout, Auto-refresh)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
 
-      // Handle RevenueCat identity on auth changes
+      // Handle identity and notifications on auth changes
       if (session?.user) {
-        identifyUser(session.user.id);
+        await identifyUser(session.user.id); //
+        // 👇 Register notifications whenever a user logs in
+        registerForPushNotificationsAsync(session.user.id);
       } else {
-        logoutUser();
+        await logoutUser(); //
       }
     });
 
