@@ -37,9 +37,7 @@ import { CameraView, Camera } from "expo-camera";
 import ViewShot, { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 
-// --- Components (CustomAlertModal, RoomTypePicker, CameraModal, etc. remain unchanged) ---
-//
-
+// --- 1. Custom Alert Modal (FIXED: Replaced <div> with <View>) ---
 const CustomAlertModal: React.FC<{
   visible: boolean;
   title: string;
@@ -53,19 +51,21 @@ const CustomAlertModal: React.FC<{
       <View style={styles.customAlertCard}>
         <Text style={styles.alertTitle}>{title}</Text>
         <Text style={styles.alertMessage}>{message}</Text>
-        <div style={styles.alertActions}>
+        {/* 👇 FIXED: Using <View> instead of <div> to resolve red line error */}
+        <View style={styles.alertActions}>
           <TouchableOpacity onPress={onCancel} style={styles.alertBtnCancel}>
             <Text style={styles.alertBtnTextCancel}>CANCEL</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={onConfirm} style={styles.alertBtnConfirm}>
             <Text style={styles.alertBtnTextConfirm}>{confirmText}</Text>
           </TouchableOpacity>
-        </div>
+        </View>
       </View>
     </View>
   </Modal>
 );
 
+// --- 2. Custom Picker Modal ---
 const RoomTypePicker: React.FC<{
   value: string;
   onSelect: (val: string) => void;
@@ -130,6 +130,7 @@ const RoomTypePicker: React.FC<{
   );
 };
 
+// --- 3. Camera Modal ---
 const CameraModal: React.FC<{
   isVisible: boolean;
   onClose: () => void;
@@ -174,6 +175,8 @@ const CameraModal: React.FC<{
     </Modal>
   );
 };
+
+// --- Main Components ---
 
 const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
   onImageSelected,
@@ -585,7 +588,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </>
         ) : (
           <View style={styles.workspace}>
-            {/* --- NEW: HOME SCREEN SALE INDICATOR --- */}
             <TouchableOpacity
               style={styles.homeSaleIndicator}
               onPress={() => navigation.navigate("BuyCredits")}
