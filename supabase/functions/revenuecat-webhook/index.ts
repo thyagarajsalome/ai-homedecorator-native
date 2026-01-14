@@ -1,64 +1,49 @@
+// supabase/functions/welcome-notification/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const CREDIT_AMOUNTS = {
-  credits_15: 15,
-  credits_50: 50,
-  credits_120: 120,
-};
+const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 serve(async (req) => {
-  const body = await req.json();
-  const { event } = body;
+  try {
+    // 1. Get the new user record from the database webhook
+    const { record } = await req.json();
+    const pushToken = record.push_token;
 
-  console.log("Received event:", event?.type);
+    // 2. Only proceed if the user has a valid push token
+    if (!pushToken) {
+      console.log("No push token found for user:", record.id);
+      return new Response(JSON.stringify({ message: "No token, skipping." }), {
+        status: 200,
+      });
+    }
 
-  // 👇 THIS PART IS CRITICAL 👇
-  // We MUST accept 'NON_RENEWING_PURCHASE' for one-time credits
-  const acceptedEvents = [
-    "INITIAL_PURCHASE",
-    "RENEWAL",
-    "NON_RENEWING_PURCHASE",
-  ];
+    // 3. Send the notification to Expo's servers
+    const response = await fetch(EXPO_PUSH_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        to: pushToken,
+        sound: "default",
+        title: "Welcome to AI Home Decorator! 🏠",
+        body: "We've given you free credits to start! Transform your first room today.",
+        data: { screen: "Home" },
+      }),
+    });
 
-  if (!event || !acceptedEvents.includes(event.type)) {
-    return new Response(`Ignored event type: ${event?.type}`, { status: 200 });
+    const result = await response.json();
+    console.log("Notification sent:", result);
+
+    return new Response(JSON.stringify(result), {
+      headers: { "Content-Type": "application/json" },
+      status: 200,
+    });
+  } catch (error) {
+    console.error("Error processing notification:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+    });
   }
-  // 👆 --------------------- 👆
-
-  const appUserId = event.app_user_id;
-  const productId = event.product_id;
-  const creditsToAdd =
-    CREDIT_AMOUNTS[productId as keyof typeof CREDIT_AMOUNTS] || 0;
-
-  if (creditsToAdd === 0) {
-    console.error(`Unknown product ID: ${productId}`);
-    return new Response("Unknown product", { status: 400 });
-  }
-
-  const supabaseAdmin = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  );
-
-  const { data: profile } = await supabaseAdmin
-    .from("user_profiles")
-    .select("generation_credits")
-    .eq("id", appUserId)
-    .single();
-
-  const currentBalance = profile?.generation_credits || 0;
-  const newBalance = currentBalance + creditsToAdd;
-
-  const { error } = await supabaseAdmin
-    .from("user_profiles")
-    .update({ generation_credits: newBalance })
-    .eq("id", appUserId);
-
-  if (error) {
-    console.error("Failed to update credits", error);
-    return new Response("Database error", { status: 500 });
-  }
-
-  return new Response(`Added ${creditsToAdd} credits`, { status: 200 });
 });

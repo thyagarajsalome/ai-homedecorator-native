@@ -34,11 +34,12 @@ import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import { CameraView, Camera } from "expo-camera";
 
-// --- NEW IMPORTS FOR SHARING & WATERMARK ---
 import ViewShot, { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 
-// --- 1. Custom Alert Modal ---
+// --- Components (CustomAlertModal, RoomTypePicker, CameraModal, etc. remain unchanged) ---
+//
+
 const CustomAlertModal: React.FC<{
   visible: boolean;
   title: string;
@@ -52,20 +53,19 @@ const CustomAlertModal: React.FC<{
       <View style={styles.customAlertCard}>
         <Text style={styles.alertTitle}>{title}</Text>
         <Text style={styles.alertMessage}>{message}</Text>
-        <View style={styles.alertActions}>
+        <div style={styles.alertActions}>
           <TouchableOpacity onPress={onCancel} style={styles.alertBtnCancel}>
             <Text style={styles.alertBtnTextCancel}>CANCEL</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={onConfirm} style={styles.alertBtnConfirm}>
             <Text style={styles.alertBtnTextConfirm}>{confirmText}</Text>
           </TouchableOpacity>
-        </View>
+        </div>
       </View>
     </View>
   </Modal>
 );
 
-// --- 2. Custom Picker Modal ---
 const RoomTypePicker: React.FC<{
   value: string;
   onSelect: (val: string) => void;
@@ -78,12 +78,7 @@ const RoomTypePicker: React.FC<{
         style={styles.customPickerButton}
         onPress={() => setModalVisible(true)}
       >
-        <Text
-          style={[
-            styles.customPickerText,
-            !value && { color: "#94A3B8" }, // Gray if placeholder
-          ]}
-        >
+        <Text style={[styles.customPickerText, !value && { color: "#94A3B8" }]}>
           {value || "Select Room Type..."}
         </Text>
         <AccordionChevronIcon style={{ color: "#94A3B8" }} />
@@ -135,7 +130,6 @@ const RoomTypePicker: React.FC<{
   );
 };
 
-// --- 3. Camera Modal ---
 const CameraModal: React.FC<{
   isVisible: boolean;
   onClose: () => void;
@@ -180,8 +174,6 @@ const CameraModal: React.FC<{
     </Modal>
   );
 };
-
-// --- Main Components ---
 
 const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
   onImageSelected,
@@ -295,16 +287,14 @@ const InspirationGallery: React.FC = () => {
   );
 };
 
-// --- UPDATED GENERATED IMAGE DISPLAY WITH WATERMARK & SHARING FIX ---
 const GeneratedImageDisplay: React.FC<{
   sourceImage: string;
   generatedImage: string;
   onReset: () => void;
 }> = ({ sourceImage, generatedImage, onReset }) => {
-  const viewShotRef = useRef<any>(null); // Ref for capturing the watermark image
+  const viewShotRef = useRef<any>(null);
   const [isSharing, setIsSharing] = useState(false);
 
-  // 1. Capture the view (Image + Watermark) to a local file
   const captureWatermarkedImage = async () => {
     try {
       if (viewShotRef.current) {
@@ -322,7 +312,6 @@ const GeneratedImageDisplay: React.FC<{
     return null;
   };
 
-  // 2. Download: Save the watermarked version to gallery
   const handleDownload = async () => {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -341,7 +330,6 @@ const GeneratedImageDisplay: React.FC<{
     }
   };
 
-  // 3. Share: Use expo-sharing to fix "Empty" WhatsApp error
   const handleShare = async () => {
     if (isSharing) return;
     setIsSharing(true);
@@ -355,7 +343,7 @@ const GeneratedImageDisplay: React.FC<{
         await Sharing.shareAsync(uri, {
           mimeType: "image/jpeg",
           dialogTitle: "Share your dream room",
-          UTI: "public.jpeg", // Helps on iOS
+          UTI: "public.jpeg",
         });
       }
     } catch (error: any) {
@@ -370,7 +358,6 @@ const GeneratedImageDisplay: React.FC<{
       <Text style={styles.resultHeader}>Your New Space</Text>
 
       <View style={styles.imageComparison}>
-        {/* Original Image */}
         <View style={styles.imageWrapper}>
           <View style={styles.imageBadge}>
             <Text style={styles.badgeText}>Original</Text>
@@ -378,7 +365,6 @@ const GeneratedImageDisplay: React.FC<{
           <Image source={{ uri: sourceImage }} style={styles.resultImg} />
         </View>
 
-        {/* AI Result - Wrapped in ViewShot for Watermark */}
         <ViewShot
           ref={viewShotRef}
           style={styles.watermarkWrapper}
@@ -391,7 +377,6 @@ const GeneratedImageDisplay: React.FC<{
             <Image source={{ uri: generatedImage }} style={styles.resultImg} />
           </View>
 
-          {/* THE WATERMARK */}
           <View style={styles.watermarkFooter}>
             <Text style={styles.watermarkText}>
               This image is decorated by Ai Home Decorator (aihomedecorator.com)
@@ -600,6 +585,22 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </>
         ) : (
           <View style={styles.workspace}>
+            {/* --- NEW: HOME SCREEN SALE INDICATOR --- */}
+            <TouchableOpacity
+              style={styles.homeSaleIndicator}
+              onPress={() => navigation.navigate("BuyCredits")}
+            >
+              <View style={styles.homeSaleTextContainer}>
+                <Text style={styles.homeSaleTitle}>FLASH SALE: 50% OFF!</Text>
+                <Text style={styles.homeSaleSubtitle}>
+                  All credit packs are half price.
+                </Text>
+              </View>
+              <View style={styles.homeSaleButton}>
+                <Text style={styles.homeSaleButtonText}>GET OFFER</Text>
+              </View>
+            </TouchableOpacity>
+
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View style={styles.stepBadge}>
@@ -772,7 +773,6 @@ const styles = StyleSheet.create({
   },
   headerBtnText: { color: "#F8FAFC", fontSize: 12, fontWeight: "600" },
 
-  // --- Styles for Custom Picker & Modal ---
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.7)",
@@ -1199,9 +1199,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
   },
 
-  // --- NEW STYLES FOR WATERMARK ---
   watermarkWrapper: {
-    backgroundColor: "#1E293B", // Match card background
+    backgroundColor: "#1E293B",
     borderRadius: 20,
     overflow: "hidden",
   },
@@ -1209,7 +1208,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   watermarkFooter: {
-    backgroundColor: "#0F172A", // Darker background for footer
+    backgroundColor: "#0F172A",
     paddingVertical: 10,
     paddingHorizontal: 5,
     alignItems: "center",
@@ -1217,10 +1216,48 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   watermarkText: {
-    color: "#94A3B8", // Subtle gray text
+    color: "#94A3B8",
     fontSize: 10,
     fontWeight: "500",
     textAlign: "center",
+  },
+
+  /* --- NEW: HOME SCREEN SALE INDICATOR STYLES --- */
+  homeSaleIndicator: {
+    backgroundColor: "rgba(99, 102, 241, 0.15)",
+    borderWidth: 1,
+    borderColor: "#6366F1",
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  homeSaleTextContainer: {
+    flex: 1,
+  },
+  homeSaleTitle: {
+    color: "#818CF8",
+    fontWeight: "900",
+    fontSize: 15,
+  },
+  homeSaleSubtitle: {
+    color: "#94A3B8",
+    fontSize: 12,
+    marginTop: 2,
+  },
+  homeSaleButton: {
+    backgroundColor: "#6366F1",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginLeft: 12,
+  },
+  homeSaleButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 12,
   },
 });
 
