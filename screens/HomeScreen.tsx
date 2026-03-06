@@ -34,7 +34,6 @@ import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import { CameraView, Camera } from "expo-camera";
 
-// --- NEW IMPORTS FOR SHARING & WATERMARK ---
 import ViewShot, { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 
@@ -81,7 +80,7 @@ const RoomTypePicker: React.FC<{
         <Text
           style={[
             styles.customPickerText,
-            !value && { color: "#94A3B8" }, // Gray if placeholder
+            !value && { color: "#94A3B8" }, 
           ]}
         >
           {value || "Select Room Type..."}
@@ -295,16 +294,14 @@ const InspirationGallery: React.FC = () => {
   );
 };
 
-// --- UPDATED GENERATED IMAGE DISPLAY WITH WATERMARK & SHARING FIX ---
 const GeneratedImageDisplay: React.FC<{
   sourceImage: string;
   generatedImage: string;
   onReset: () => void;
 }> = ({ sourceImage, generatedImage, onReset }) => {
-  const viewShotRef = useRef<any>(null); // Ref for capturing the watermark image
+  const viewShotRef = useRef<any>(null); 
   const [isSharing, setIsSharing] = useState(false);
 
-  // 1. Capture the view (Image + Watermark) to a local file
   const captureWatermarkedImage = async () => {
     try {
       if (viewShotRef.current) {
@@ -322,7 +319,6 @@ const GeneratedImageDisplay: React.FC<{
     return null;
   };
 
-  // 2. Download: Save the watermarked version to gallery
   const handleDownload = async () => {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -341,7 +337,6 @@ const GeneratedImageDisplay: React.FC<{
     }
   };
 
-  // 3. Share: Use expo-sharing to fix "Empty" WhatsApp error
   const handleShare = async () => {
     if (isSharing) return;
     setIsSharing(true);
@@ -355,7 +350,7 @@ const GeneratedImageDisplay: React.FC<{
         await Sharing.shareAsync(uri, {
           mimeType: "image/jpeg",
           dialogTitle: "Share your dream room",
-          UTI: "public.jpeg", // Helps on iOS
+          UTI: "public.jpeg",
         });
       }
     } catch (error: any) {
@@ -370,7 +365,6 @@ const GeneratedImageDisplay: React.FC<{
       <Text style={styles.resultHeader}>Your New Space</Text>
 
       <View style={styles.imageComparison}>
-        {/* Original Image */}
         <View style={styles.imageWrapper}>
           <View style={styles.imageBadge}>
             <Text style={styles.badgeText}>Original</Text>
@@ -378,7 +372,6 @@ const GeneratedImageDisplay: React.FC<{
           <Image source={{ uri: sourceImage }} style={styles.resultImg} />
         </View>
 
-        {/* AI Result - Wrapped in ViewShot for Watermark */}
         <ViewShot
           ref={viewShotRef}
           style={styles.watermarkWrapper}
@@ -391,7 +384,6 @@ const GeneratedImageDisplay: React.FC<{
             <Image source={{ uri: generatedImage }} style={styles.resultImg} />
           </View>
 
-          {/* THE WATERMARK */}
           <View style={styles.watermarkFooter}>
             <Text style={styles.watermarkText}>
               This image is decorated by Ai Home Decorator (aihomedecorator.com)
@@ -424,6 +416,19 @@ const GeneratedImageDisplay: React.FC<{
           <Text style={styles.btnText}>{isSharing ? "..." : "Share"}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* NEW: Upsell Button right where the user sees the watermark */}
+      <TouchableOpacity 
+        style={styles.upsellButton} 
+        onPress={() => {
+          Alert.alert(
+            "Premium Feature", 
+            "Removing the watermark costs 1 credit. (Implementation pending for backend un-watermarked request)"
+          );
+        }}
+      >
+        <Text style={styles.upsellButtonText}>✨ Remove Watermark & Save HD (1 Credit)</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -716,9 +721,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 </View>
               ) : (
                 <View style={styles.customInputContainer}>
+                  {/* UX FIX: Better copy for custom prompts to justify 3 credits */}
                   <View style={styles.infoBox}>
+                    <Text style={styles.infoTitle}>🌟 Advanced Custom Design</Text>
                     <Text style={styles.infoText}>
-                      ✨ Custom designs cost 3 credits.
+                      Uses our premium AI model for highly detailed, specific requests. (Costs 3 credits)
                     </Text>
                   </View>
                   <TextInput
@@ -772,7 +779,6 @@ const styles = StyleSheet.create({
   },
   headerBtnText: { color: "#F8FAFC", fontSize: 12, fontWeight: "600" },
 
-  // --- Styles for Custom Picker & Modal ---
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.7)",
@@ -1093,7 +1099,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(139, 92, 246, 0.3)",
   },
-  infoText: { color: "#C4B5FD", fontSize: 13, textAlign: "center" },
+  infoTitle: { 
+    color: "#C4B5FD", 
+    fontSize: 14, 
+    fontWeight: 'bold', 
+    marginBottom: 4 
+  },
+  infoText: { 
+    color: "#A78BFA", 
+    fontSize: 13 
+  },
   textArea: {
     backgroundColor: "#0F172A",
     borderRadius: 16,
@@ -1199,9 +1214,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
   },
 
-  // --- NEW STYLES FOR WATERMARK ---
   watermarkWrapper: {
-    backgroundColor: "#1E293B", // Match card background
+    backgroundColor: "#1E293B",
     borderRadius: 20,
     overflow: "hidden",
   },
@@ -1209,7 +1223,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   watermarkFooter: {
-    backgroundColor: "#0F172A", // Darker background for footer
+    backgroundColor: "#0F172A",
     paddingVertical: 10,
     paddingHorizontal: 5,
     alignItems: "center",
@@ -1217,10 +1231,26 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   watermarkText: {
-    color: "#94A3B8", // Subtle gray text
+    color: "#94A3B8",
     fontSize: 10,
     fontWeight: "500",
     textAlign: "center",
+  },
+
+  upsellButton: {
+    marginTop: 16,
+    backgroundColor: "rgba(99, 102, 241, 0.15)",
+    borderWidth: 1,
+    borderColor: "#6366F1",
+    paddingVertical: 14,
+    borderRadius: 14,
+    width: "100%",
+    alignItems: "center",
+  },
+  upsellButtonText: {
+    color: "#818CF8",
+    fontWeight: "700",
+    fontSize: 15,
   },
 });
 
