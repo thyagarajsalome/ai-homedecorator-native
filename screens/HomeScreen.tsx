@@ -37,7 +37,7 @@ import { CameraView, Camera } from "expo-camera";
 import ViewShot, { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 
-// --- 1. Custom Alert Modal ---
+// --- 1. Custom Alert Modal (FIXED: Replaced <div> with <View>) ---
 const CustomAlertModal: React.FC<{
   visible: boolean;
   title: string;
@@ -51,6 +51,7 @@ const CustomAlertModal: React.FC<{
       <View style={styles.customAlertCard}>
         <Text style={styles.alertTitle}>{title}</Text>
         <Text style={styles.alertMessage}>{message}</Text>
+        {/* 👇 FIXED: Using <View> instead of <div> to resolve red line error */}
         <View style={styles.alertActions}>
           <TouchableOpacity onPress={onCancel} style={styles.alertBtnCancel}>
             <Text style={styles.alertBtnTextCancel}>CANCEL</Text>
@@ -77,12 +78,16 @@ const RoomTypePicker: React.FC<{
         style={styles.customPickerButton}
         onPress={() => setModalVisible(true)}
       >
+<<<<<<< HEAD
         <Text
           style={[
             styles.customPickerText,
             !value && { color: "#94A3B8" }, 
           ]}
         >
+=======
+        <Text style={[styles.customPickerText, !value && { color: "#94A3B8" }]}>
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
           {value || "Select Room Type..."}
         </Text>
         <AccordionChevronIcon style={{ color: "#94A3B8" }} />
@@ -299,7 +304,11 @@ const GeneratedImageDisplay: React.FC<{
   generatedImage: string;
   onReset: () => void;
 }> = ({ sourceImage, generatedImage, onReset }) => {
+<<<<<<< HEAD
   const viewShotRef = useRef<any>(null); 
+=======
+  const viewShotRef = useRef<any>(null);
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
   const [isSharing, setIsSharing] = useState(false);
 
   const captureWatermarkedImage = async () => {
@@ -605,6 +614,21 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </>
         ) : (
           <View style={styles.workspace}>
+            <TouchableOpacity
+              style={styles.homeSaleIndicator}
+              onPress={() => navigation.navigate("BuyCredits")}
+            >
+              <View style={styles.homeSaleTextContainer}>
+                <Text style={styles.homeSaleTitle}>FLASH SALE: 50% OFF!</Text>
+                <Text style={styles.homeSaleSubtitle}>
+                  All credit packs are half price.
+                </Text>
+              </View>
+              <View style={styles.homeSaleButton}>
+                <Text style={styles.homeSaleButtonText}>GET OFFER</Text>
+              </View>
+            </TouchableOpacity>
+
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View style={styles.stepBadge}>
@@ -1237,6 +1261,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
+<<<<<<< HEAD
   upsellButton: {
     marginTop: 16,
     backgroundColor: "rgba(99, 102, 241, 0.15)",
@@ -1252,6 +1277,45 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 15,
   },
+=======
+  /* --- NEW: HOME SCREEN SALE INDICATOR STYLES --- */
+  homeSaleIndicator: {
+    backgroundColor: "rgba(99, 102, 241, 0.15)",
+    borderWidth: 1,
+    borderColor: "#6366F1",
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  homeSaleTextContainer: {
+    flex: 1,
+  },
+  homeSaleTitle: {
+    color: "#818CF8",
+    fontWeight: "900",
+    fontSize: 15,
+  },
+  homeSaleSubtitle: {
+    color: "#94A3B8",
+    fontSize: 12,
+    marginTop: 2,
+  },
+  homeSaleButton: {
+    backgroundColor: "#6366F1",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginLeft: 12,
+  },
+  homeSaleButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 12,
+  },
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
 });
 
 export default HomeScreen;

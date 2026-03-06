@@ -19,12 +19,7 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { session } = useAuth();
 
   useEffect(() => {
-    const setup = async () => {
-      // Logic for initPurchases is now in AuthContext to handle user identity correctly.
-      // We just load the packages here.
-      loadPackages();
-    };
-    setup();
+    loadPackages();
   }, []);
 
   const loadPackages = async () => {
@@ -34,18 +29,27 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setLoading(false);
   };
 
+<<<<<<< HEAD
   // HELPER FUNCTION: Calculates original price by doubling the current one for the sale effect
   const getOriginalPrice = (priceString: string) => {
+=======
+  // 👇 HELPER FUNCTION: Calculates original price by doubling the current one
+  const getOriginalPrice = (priceString: string) => {
+    // Extracts the number, doubles it, and preserves currency symbols/formatting
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
     const numericPart = priceString.replace(/[^0-9.]/g, "");
     const numericValue = parseFloat(numericPart);
     if (isNaN(numericValue)) return "";
 
     const originalValue = numericValue * 2;
+<<<<<<< HEAD
+=======
+    // Replace the old number with the new one in the original string
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
     return priceString.replace(/[0-9.,]+/, originalValue.toLocaleString());
   };
 
   const onPurchase = async (pack: PurchasesPackage) => {
-    // 1. Check login
     if (!session?.user) {
       Alert.alert("Error", "You must be logged in to buy credits.");
       return;
@@ -53,12 +57,7 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
     try {
       setLoading(true);
-
-      // 2. Perform the transaction via RevenueCat
-      const { customerInfo } = await purchasePackage(pack);
-
-      // 3. Success!
-      // The backend webhook handles the credit update securely.
+      await purchasePackage(pack);
       setTimeout(() => {
         Alert.alert(
           "Purchase Successful",
@@ -117,6 +116,15 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </Text>
         </View>
 
+        <View style={styles.saleBanner}>
+          <Text style={styles.saleBannerText}>
+            🔥 LIMITED TIME: 50% PRICE DROP! 🔥
+          </Text>
+          <Text style={styles.saleSubtext}>
+            Get premium designs at half the price.
+          </Text>
+        </View>
+
         {loading ? (
           <ActivityIndicator
             size="large"
@@ -126,6 +134,7 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         ) : packages.length === 0 ? (
           <Text style={styles.emptyText}>No packages found.{"\n"}</Text>
         ) : (
+<<<<<<< HEAD
           <View style={styles.packagesContainer}>
             {packages.map((item, index) => {
               // Highlight the middle or most expensive package as "Best Value"
@@ -172,6 +181,47 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               );
             })}
           </View>
+=======
+          <FlatList
+            data={packages}
+            keyExtractor={(item) => item.identifier}
+            contentContainerStyle={{ gap: 16, marginTop: 20 }}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => onPurchase(item)}
+                style={styles.card}
+              >
+                <View style={styles.cardInfo}>
+                  <Text style={styles.packTitle}>{item.product.title}</Text>
+                  <Text style={styles.packDesc}>
+                    {item.product.description}
+                  </Text>
+                </View>
+
+                <View style={styles.buyActionArea}>
+                  <View style={styles.priceBadge}>
+                    <Text style={styles.priceBadgeText}>50% OFF</Text>
+                  </View>
+
+                  {/* 👇 UPDATED: Price area with strikethrough */}
+                  <View style={styles.priceContainer}>
+                    <Text style={styles.oldPriceText}>
+                      {getOriginalPrice(item.product.priceString)}
+                    </Text>
+                    <View style={styles.buyButton}>
+                      <Text style={styles.priceText}>
+                        {item.product.priceString}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>No packages found.{"\n"}</Text>
+            }
+          />
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
         )}
       </ScrollView>
     </SafeAreaView>
@@ -185,6 +235,7 @@ const styles = StyleSheet.create({
   backText: { color: "#94A3B8", fontSize: 16 },
   content: { padding: 24, flex: 1 },
   title: { fontSize: 32, fontWeight: "800", color: "#F8FAFC", marginBottom: 8 },
+<<<<<<< HEAD
   subtitle: { fontSize: 16, color: "#94A3B8", lineHeight: 24 },
 
   benefitsContainer: {
@@ -209,19 +260,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "500",
   },
+=======
+  subtitle: { fontSize: 16, color: "#94A3B8" },
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
 
   saleBanner: {
     backgroundColor: "rgba(99, 102, 241, 0.15)",
     borderWidth: 1,
     borderColor: "#6366F1",
+<<<<<<< HEAD
     borderRadius: 12,
     padding: 14,
     marginTop: 20,
+=======
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 16,
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
     alignItems: "center",
   },
   saleBannerText: {
     color: "#818CF8",
     fontWeight: "900",
+<<<<<<< HEAD
     fontSize: 14,
   },
 
@@ -230,10 +291,20 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingBottom: 40,
   },
+=======
+    fontSize: 16,
+  },
+  saleSubtext: {
+    color: "#94A3B8",
+    fontSize: 12,
+    marginTop: 4,
+  },
+
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
   card: {
     backgroundColor: "#1E293B",
     borderRadius: 20,
-    padding: 20,
+    padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -241,6 +312,7 @@ const styles = StyleSheet.create({
     borderColor: "#334155",
     position: "relative",
   },
+<<<<<<< HEAD
   bestValueCard: {
     borderColor: "#818CF8",
     borderWidth: 2,
@@ -264,6 +336,9 @@ const styles = StyleSheet.create({
   },
 
   cardInfo: { flex: 1, marginRight: 16 },
+=======
+  cardInfo: { flex: 1, marginRight: 12 },
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
   packTitle: {
     fontSize: 18,
     fontWeight: "700",
@@ -275,6 +350,23 @@ const styles = StyleSheet.create({
   buyActionArea: {
     alignItems: "center",
   },
+<<<<<<< HEAD
+=======
+  priceBadge: {
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  priceBadgeText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+
+  /* 👇 NEW: STYLES FOR PRICE STRIKETHROUGH */
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
   priceContainer: {
     alignItems: "center",
     gap: 4,
@@ -285,6 +377,10 @@ const styles = StyleSheet.create({
     textDecorationLine: "line-through",
     fontWeight: "500",
   },
+<<<<<<< HEAD
+=======
+
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
   buyButton: {
     backgroundColor: "#6366F1",
     paddingVertical: 10,
@@ -293,9 +389,12 @@ const styles = StyleSheet.create({
     minWidth: 85,
     alignItems: "center",
   },
+<<<<<<< HEAD
   bestValueBuyButton: {
     backgroundColor: "#4F46E5",
   },
+=======
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
   priceText: { color: "white", fontWeight: "bold", fontSize: 15 },
   emptyText: {
     color: "#64748B",
