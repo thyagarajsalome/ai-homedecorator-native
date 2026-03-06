@@ -3,10 +3,10 @@ import {
   View,
   Text,
   TouchableOpacity,
-  FlatList,
   StyleSheet,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PurchasesPackage } from "react-native-purchases";
@@ -29,15 +29,13 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setLoading(false);
   };
 
-  // 👇 HELPER FUNCTION: Calculates original price by doubling the current one
+  // HELPER FUNCTION: Calculates original price by doubling the current one for the sale effect
   const getOriginalPrice = (priceString: string) => {
-    // Extracts the number, doubles it, and preserves currency symbols/formatting
     const numericPart = priceString.replace(/[^0-9.]/g, "");
     const numericValue = parseFloat(numericPart);
     if (isNaN(numericValue)) return "";
 
     const originalValue = numericValue * 2;
-    // Replace the old number with the new one in the original string
     return priceString.replace(/[0-9.,]+/, originalValue.toLocaleString());
   };
 
@@ -81,16 +79,30 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
-        <Text style={styles.title}>Get More Credits</Text>
-        <Text style={styles.subtitle}>Choose a pack to continue creating.</Text>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Unlock Premium AI</Text>
+        <Text style={styles.subtitle}>
+          Transform any room in seconds with our most advanced AI models.
+        </Text>
+
+        <View style={styles.benefitsContainer}>
+          <View style={styles.benefitRow}>
+            <Text style={styles.benefitIcon}>✨</Text>
+            <Text style={styles.benefitText}>Remove all watermarks</Text>
+          </View>
+          <View style={styles.benefitRow}>
+            <Text style={styles.benefitIcon}>⚡️</Text>
+            <Text style={styles.benefitText}>Faster generation times</Text>
+          </View>
+          <View style={styles.benefitRow}>
+            <Text style={styles.benefitIcon}>📸</Text>
+            <Text style={styles.benefitText}>High-resolution downloads</Text>
+          </View>
+        </View>
 
         <View style={styles.saleBanner}>
           <Text style={styles.saleBannerText}>
-            🔥 LIMITED TIME: 50% PRICE DROP! 🔥
-          </Text>
-          <Text style={styles.saleSubtext}>
-            Get premium designs at half the price.
+            🔥 FLASH SALE: 50% PRICE DROP! 🔥
           </Text>
         </View>
 
@@ -100,48 +112,56 @@ const BuyCreditsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             color="#6366F1"
             style={{ marginTop: 40 }}
           />
+        ) : packages.length === 0 ? (
+          <Text style={styles.emptyText}>No packages found.{"\n"}</Text>
         ) : (
-          <FlatList
-            data={packages}
-            keyExtractor={(item) => item.identifier}
-            contentContainerStyle={{ gap: 16, marginTop: 20 }}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => onPurchase(item)}
-                style={styles.card}
-              >
-                <View style={styles.cardInfo}>
-                  <Text style={styles.packTitle}>{item.product.title}</Text>
-                  <Text style={styles.packDesc}>
-                    {item.product.description}
-                  </Text>
-                </View>
+          <View style={styles.packagesContainer}>
+            {packages.map((item, index) => {
+              // Highlight the middle or most expensive package as "Best Value"
+              const isBestValue = index === 1 || packages.length === 1;
 
-                <View style={styles.buyActionArea}>
-                  <View style={styles.priceBadge}>
-                    <Text style={styles.priceBadgeText}>50% OFF</Text>
+              return (
+                <TouchableOpacity
+                  key={item.identifier}
+                  onPress={() => onPurchase(item)}
+                  style={[styles.card, isBestValue && styles.bestValueCard]}
+                >
+                  {isBestValue && (
+                    <View style={styles.bestValueBadge}>
+                      <Text style={styles.bestValueText}>MOST POPULAR</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.packTitle}>{item.product.title}</Text>
+                    <Text style={styles.packDesc}>
+                      {item.product.description}
+                    </Text>
                   </View>
 
-                  {/* 👇 UPDATED: Price area with strikethrough */}
-                  <View style={styles.priceContainer}>
-                    <Text style={styles.oldPriceText}>
-                      {getOriginalPrice(item.product.priceString)}
-                    </Text>
-                    <View style={styles.buyButton}>
-                      <Text style={styles.priceText}>
-                        {item.product.priceString}
+                  <View style={styles.buyActionArea}>
+                    <View style={styles.priceContainer}>
+                      <Text style={styles.oldPriceText}>
+                        {getOriginalPrice(item.product.priceString)}
                       </Text>
+                      <View
+                        style={[
+                          styles.buyButton,
+                          isBestValue && styles.bestValueBuyButton,
+                        ]}
+                      >
+                        <Text style={styles.priceText}>
+                          {item.product.priceString}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            )}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>No packages found.{"\n"}</Text>
-            }
-          />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -153,28 +173,51 @@ const styles = StyleSheet.create({
   backText: { color: "#94A3B8", fontSize: 16 },
   content: { padding: 24, flex: 1 },
   title: { fontSize: 32, fontWeight: "800", color: "#F8FAFC", marginBottom: 8 },
-  subtitle: { fontSize: 16, color: "#94A3B8" },
+  subtitle: { fontSize: 16, color: "#94A3B8", lineHeight: 24 },
+
+  benefitsContainer: {
+    backgroundColor: "#1E293B",
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  benefitRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  benefitIcon: {
+    fontSize: 18,
+    marginRight: 10,
+  },
+  benefitText: {
+    color: "#F8FAFC",
+    fontSize: 15,
+    fontWeight: "500",
+  },
 
   saleBanner: {
     backgroundColor: "rgba(99, 102, 241, 0.15)",
     borderWidth: 1,
     borderColor: "#6366F1",
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 16,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 20,
     alignItems: "center",
   },
   saleBannerText: {
     color: "#818CF8",
     fontWeight: "900",
-    fontSize: 16,
-  },
-  saleSubtext: {
-    color: "#94A3B8",
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 14,
   },
 
+  packagesContainer: {
+    gap: 16,
+    marginTop: 20,
+    paddingBottom: 40,
+  },
   card: {
     backgroundColor: "#1E293B",
     borderRadius: 20,
@@ -184,8 +227,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#334155",
+    position: "relative",
   },
-  cardInfo: { flex: 1, marginRight: 12 },
+  bestValueCard: {
+    borderColor: "#818CF8",
+    borderWidth: 2,
+    backgroundColor: "rgba(99, 102, 241, 0.08)",
+  },
+  bestValueBadge: {
+    position: "absolute",
+    top: -12,
+    alignSelf: "center",
+    left: "40%",
+    backgroundColor: "#818CF8",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  bestValueText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "bold",
+    letterSpacing: 1,
+  },
+
+  cardInfo: { flex: 1, marginRight: 16 },
   packTitle: {
     fontSize: 18,
     fontWeight: "700",
@@ -197,20 +263,6 @@ const styles = StyleSheet.create({
   buyActionArea: {
     alignItems: "center",
   },
-  priceBadge: {
-    backgroundColor: "#EF4444",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginBottom: 6,
-  },
-  priceBadgeText: {
-    color: "white",
-    fontSize: 10,
-    fontWeight: "bold",
-  },
-
-  /* 👇 NEW: STYLES FOR PRICE STRIKETHROUGH */
   priceContainer: {
     alignItems: "center",
     gap: 4,
@@ -221,7 +273,6 @@ const styles = StyleSheet.create({
     textDecorationLine: "line-through",
     fontWeight: "500",
   },
-
   buyButton: {
     backgroundColor: "#6366F1",
     paddingVertical: 10,
@@ -229,6 +280,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     minWidth: 85,
     alignItems: "center",
+  },
+  bestValueBuyButton: {
+    backgroundColor: "#4F46E5",
   },
   priceText: { color: "white", fontWeight: "bold", fontSize: 15 },
   emptyText: {

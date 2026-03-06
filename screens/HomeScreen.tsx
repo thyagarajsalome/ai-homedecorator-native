@@ -78,7 +78,16 @@ const RoomTypePicker: React.FC<{
         style={styles.customPickerButton}
         onPress={() => setModalVisible(true)}
       >
+<<<<<<< HEAD
+        <Text
+          style={[
+            styles.customPickerText,
+            !value && { color: "#94A3B8" }, 
+          ]}
+        >
+=======
         <Text style={[styles.customPickerText, !value && { color: "#94A3B8" }]}>
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
           {value || "Select Room Type..."}
         </Text>
         <AccordionChevronIcon style={{ color: "#94A3B8" }} />
@@ -295,7 +304,11 @@ const GeneratedImageDisplay: React.FC<{
   generatedImage: string;
   onReset: () => void;
 }> = ({ sourceImage, generatedImage, onReset }) => {
+<<<<<<< HEAD
+  const viewShotRef = useRef<any>(null); 
+=======
   const viewShotRef = useRef<any>(null);
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
   const [isSharing, setIsSharing] = useState(false);
 
   const captureWatermarkedImage = async () => {
@@ -412,6 +425,19 @@ const GeneratedImageDisplay: React.FC<{
           <Text style={styles.btnText}>{isSharing ? "..." : "Share"}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* NEW: Upsell Button right where the user sees the watermark */}
+      <TouchableOpacity 
+        style={styles.upsellButton} 
+        onPress={() => {
+          Alert.alert(
+            "Premium Feature", 
+            "Removing the watermark costs 1 credit. (Implementation pending for backend un-watermarked request)"
+          );
+        }}
+      >
+        <Text style={styles.upsellButtonText}>✨ Remove Watermark & Save HD (1 Credit)</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -719,9 +745,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 </View>
               ) : (
                 <View style={styles.customInputContainer}>
+                  {/* UX FIX: Better copy for custom prompts to justify 3 credits */}
                   <View style={styles.infoBox}>
+                    <Text style={styles.infoTitle}>🌟 Advanced Custom Design</Text>
                     <Text style={styles.infoText}>
-                      ✨ Custom designs cost 3 credits.
+                      Uses our premium AI model for highly detailed, specific requests. (Costs 3 credits)
                     </Text>
                   </View>
                   <TextInput
@@ -1095,7 +1123,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(139, 92, 246, 0.3)",
   },
-  infoText: { color: "#C4B5FD", fontSize: 13, textAlign: "center" },
+  infoTitle: { 
+    color: "#C4B5FD", 
+    fontSize: 14, 
+    fontWeight: 'bold', 
+    marginBottom: 4 
+  },
+  infoText: { 
+    color: "#A78BFA", 
+    fontSize: 13 
+  },
   textArea: {
     backgroundColor: "#0F172A",
     borderRadius: 16,
@@ -1224,6 +1261,23 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
+<<<<<<< HEAD
+  upsellButton: {
+    marginTop: 16,
+    backgroundColor: "rgba(99, 102, 241, 0.15)",
+    borderWidth: 1,
+    borderColor: "#6366F1",
+    paddingVertical: 14,
+    borderRadius: 14,
+    width: "100%",
+    alignItems: "center",
+  },
+  upsellButtonText: {
+    color: "#818CF8",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+=======
   /* --- NEW: HOME SCREEN SALE INDICATOR STYLES --- */
   homeSaleIndicator: {
     backgroundColor: "rgba(99, 102, 241, 0.15)",
@@ -1261,6 +1315,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 12,
   },
+>>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
 });
 
 export default HomeScreen;
