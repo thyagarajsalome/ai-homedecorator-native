@@ -37,7 +37,7 @@ import { CameraView, Camera } from "expo-camera";
 import ViewShot, { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 
-// --- 1. Custom Alert Modal (FIXED: Replaced <div> with <View>) ---
+// --- 1. Custom Alert Modal ---
 const CustomAlertModal: React.FC<{
   visible: boolean;
   title: string;
@@ -51,7 +51,6 @@ const CustomAlertModal: React.FC<{
       <View style={styles.customAlertCard}>
         <Text style={styles.alertTitle}>{title}</Text>
         <Text style={styles.alertMessage}>{message}</Text>
-        {/* 👇 FIXED: Using <View> instead of <div> to resolve red line error */}
         <View style={styles.alertActions}>
           <TouchableOpacity onPress={onCancel} style={styles.alertBtnCancel}>
             <Text style={styles.alertBtnTextCancel}>CANCEL</Text>
@@ -78,16 +77,7 @@ const RoomTypePicker: React.FC<{
         style={styles.customPickerButton}
         onPress={() => setModalVisible(true)}
       >
-<<<<<<< HEAD
-        <Text
-          style={[
-            styles.customPickerText,
-            !value && { color: "#94A3B8" }, 
-          ]}
-        >
-=======
         <Text style={[styles.customPickerText, !value && { color: "#94A3B8" }]}>
->>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
           {value || "Select Room Type..."}
         </Text>
         <AccordionChevronIcon style={{ color: "#94A3B8" }} />
@@ -304,11 +294,7 @@ const GeneratedImageDisplay: React.FC<{
   generatedImage: string;
   onReset: () => void;
 }> = ({ sourceImage, generatedImage, onReset }) => {
-<<<<<<< HEAD
-  const viewShotRef = useRef<any>(null); 
-=======
   const viewShotRef = useRef<any>(null);
->>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
   const [isSharing, setIsSharing] = useState(false);
 
   const captureWatermarkedImage = async () => {
@@ -1239,6 +1225,7 @@ const styles = StyleSheet.create({
   },
 
   watermarkWrapper: {
+    
     backgroundColor: "#1E293B",
     borderRadius: 20,
     overflow: "hidden",
@@ -1261,7 +1248,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-<<<<<<< HEAD
   upsellButton: {
     marginTop: 16,
     backgroundColor: "rgba(99, 102, 241, 0.15)",
@@ -1277,7 +1263,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 15,
   },
-=======
   /* --- NEW: HOME SCREEN SALE INDICATOR STYLES --- */
   homeSaleIndicator: {
     backgroundColor: "rgba(99, 102, 241, 0.15)",
@@ -1315,7 +1300,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 12,
   },
->>>>>>> 57bd77444fc800e0b92eb6daca17d2f70757d947
 });
 
 export default HomeScreen;
