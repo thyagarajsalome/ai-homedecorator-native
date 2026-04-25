@@ -1,710 +1,76 @@
-import React, { useState, useRef, useCallback } from "react";
-import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  ScrollView,
-  Alert,
-  TextInput,
-  Modal,
-  FlatList,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+// screens/HomeScreen.tsx
+import React from "react";
+import { ScrollView, TouchableOpacity, Text, View, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context"; // Changed import to match your original setup
 import { useFocusEffect } from "@react-navigation/native";
-import { Style } from "../types";
-import { ROOM_TYPES, STYLE_CATEGORIES } from "../constants";
-import * as geminiService from "../services/geminiService";
-import Loader from "../components/Loader";
-import {
-  UploadIcon,
-  CameraIcon,
-  DownloadIcon,
-  ShareIcon,
-  ResetIcon,
-  DecorateIcon,
-  AccordionChevronIcon,
-} from "../components/Icons";
-import { useAuth } from "../context/AuthContext";
+
+import { useHomeState } from "../hooks/useHomeState";
 import Header from "../components/Header";
-import { supabase } from "../lib/supabase";
-
-import * as ImagePicker from "expo-image-picker";
-import * as MediaLibrary from "expo-media-library";
-import { CameraView, Camera } from "expo-camera";
-
-import ViewShot, { captureRef } from "react-native-view-shot";
-import * as Sharing from "expo-sharing";
-
-// --- 1. Custom Alert Modal ---
-const CustomAlertModal: React.FC<{
-  visible: boolean;
-  title: string;
-  message: string;
-  onCancel: () => void;
-  onConfirm: () => void;
-  confirmText: string;
-}> = ({ visible, title, message, onCancel, onConfirm, confirmText }) => (
-  <Modal transparent visible={visible} animationType="fade">
-    <View style={styles.modalOverlay}>
-      <View style={styles.customAlertCard}>
-        <Text style={styles.alertTitle}>{title}</Text>
-        <Text style={styles.alertMessage}>{message}</Text>
-        <View style={styles.alertActions}>
-          <TouchableOpacity onPress={onCancel} style={styles.alertBtnCancel}>
-            <Text style={styles.alertBtnTextCancel}>CANCEL</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onConfirm} style={styles.alertBtnConfirm}>
-            <Text style={styles.alertBtnTextConfirm}>{confirmText}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  </Modal>
-);
-
-// --- 2. Custom Picker Modal ---
-const RoomTypePicker: React.FC<{
-  value: string;
-  onSelect: (val: string) => void;
-}> = ({ value, onSelect }) => {
-  const [modalVisible, setModalVisible] = useState(false);
-
-  return (
-    <>
-      <TouchableOpacity
-        style={styles.customPickerButton}
-        onPress={() => setModalVisible(true)}
-      >
-        <Text style={[styles.customPickerText, !value && { color: "#94A3B8" }]}>
-          {value || "Select Room Type..."}
-        </Text>
-        <AccordionChevronIcon style={{ color: "#94A3B8" }} />
-      </TouchableOpacity>
-
-      <Modal transparent visible={modalVisible} animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.pickerModalContainer}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Room Type</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Text style={styles.pickerCloseText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={ROOM_TYPES}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.pickerItem,
-                    item === value && styles.pickerItemActive,
-                  ]}
-                  onPress={() => {
-                    onSelect(item);
-                    setModalVisible(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.pickerItemText,
-                      item === value && styles.pickerItemTextActive,
-                    ]}
-                  >
-                    {item}
-                  </Text>
-                  {item === value && (
-                    <View style={styles.checkmark}>
-                      <Text style={{ color: "white", fontSize: 12 }}>✓</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
-    </>
-  );
-};
-
-// --- 3. Camera Modal ---
-const CameraModal: React.FC<{
-  isVisible: boolean;
-  onClose: () => void;
-  onPictureTaken: (uri: string) => void;
-}> = ({ isVisible, onClose, onPictureTaken }) => {
-  const cameraRef = useRef<CameraView>(null);
-
-  const takePicture = async () => {
-    if (cameraRef.current) {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5 });
-      if (photo) onPictureTaken(photo.uri);
-    }
-  };
-
-  return (
-    <Modal
-      animationType="slide"
-      transparent={false}
-      visible={isVisible}
-      onRequestClose={onClose}
-    >
-      <View style={{ flex: 1, backgroundColor: "#000" }}>
-        <CameraView
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          ref={cameraRef}
-        />
-        <SafeAreaView style={styles.cameraOverlay} pointerEvents="box-none">
-          <TouchableOpacity onPress={onClose} style={styles.cameraCloseBtn}>
-            <Text style={styles.cameraCloseText}>Cancel</Text>
-          </TouchableOpacity>
-          <View style={styles.cameraBottomBar}>
-            <TouchableOpacity
-              onPress={takePicture}
-              style={styles.shutterButton}
-            >
-              <View style={styles.shutterInner} />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </View>
-    </Modal>
-  );
-};
-
-// --- 4. Info Guide Component ---
-const InfoGuide: React.FC = () => (
-  <View style={styles.infoSection}>
-    <Text style={styles.infoHeading}>Why use AI Decorator?</Text>
-    <View style={styles.benefitRow}>
-      <Text style={styles.benefitText}>✨ <Text style={styles.boldText}>Instant Inspiration:</Text> Visualize a new look in seconds.</Text>
-    </View>
-    <View style={styles.benefitRow}>
-      <Text style={styles.benefitText}>💰 <Text style={styles.boldText}>Save Money:</Text> Test styles before buying expensive furniture.</Text>
-    </View>
-    <View style={styles.benefitRow}>
-      <Text style={styles.benefitText}>🏠 <Text style={styles.boldText}>Perfect Fit:</Text> AI understands your room's unique layout.</Text>
-    </View>
-    
-    <Text style={[styles.infoHeading, { marginTop: 24 }]}>How it Works</Text>
-    <View style={styles.stepRow}>
-      <View style={styles.stepNumber}><Text style={styles.stepNumberText}>1</Text></View>
-      <Text style={styles.stepText}><Text style={styles.boldText}>Snap:</Text> Take a clear photo of your room.</Text>
-    </View>
-    <View style={styles.stepRow}>
-      <View style={styles.stepNumber}><Text style={styles.stepNumberText}>2</Text></View>
-      <Text style={styles.stepText}><Text style={styles.boldText}>Select:</Text> Choose a room type and style.</Text>
-    </View>
-    <View style={styles.stepRow}>
-      <View style={styles.stepNumber}><Text style={styles.stepNumberText}>3</Text></View>
-      <Text style={styles.stepText}><Text style={styles.boldText}>Decorate:</Text> Let AI transform your space instantly.</Text>
-    </View>
-  </View>
-);
-
-// --- 5. Design History Component ---
-const DesignHistory: React.FC<{ history: any[] }> = ({ history }) => {
-  if (history.length === 0) return null;
-
-  return (
-    <View style={styles.historyContainer}>
-      <Text style={styles.sectionTitle}>Your Recent Designs</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.historyScroll}>
-        {history.map((item) => (
-          <View key={item.id} style={styles.historyCard}>
-            <Image source={{ uri: item.generated_image_url }} style={styles.historyImage} />
-            <Text style={styles.historyLabel}>{item.room_type} • {item.style_name}</Text>
-          </View>
-        ))}
-      </ScrollView>
-    </View>
-  );
-};
-
-// --- Main Components ---
-
-const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
-  onImageSelected,
-}) => {
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
-
-  const openImageGallery = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission needed", "We need access to your photos!");
-      return;
-    }
-    let result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.5,
-    });
-    if (!result.canceled) onImageSelected(result.assets[0].uri);
-  };
-
-  const openCamera = async () => {
-    const { status } = await Camera.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission needed", "We need access to your camera!");
-      return;
-    }
-    setIsCameraOpen(true);
-  };
-
-  const onPictureTaken = (uri: string) => {
-    setIsCameraOpen(false);
-    onImageSelected(uri);
-  };
-
-  return (
-    <View style={styles.uploadCard}>
-      <CameraModal
-        isVisible={isCameraOpen}
-        onClose={() => setIsCameraOpen(false)}
-        onPictureTaken={onPictureTaken}
-      />
-      <View style={styles.uploadIconContainer}>
-        <UploadIcon style={{ width: 40, height: 40, color: "#818CF8" }} />
-      </View>
-      <Text style={styles.uploadTitle}>Start Your Design</Text>
-      <Text style={styles.uploadSubtitle}>
-        Upload a photo of your room or take a new one to get started.
-      </Text>
-
-      <View style={styles.uploadActions}>
-        <TouchableOpacity
-          onPress={openImageGallery}
-          style={[styles.actionButton, styles.primaryButton]}
-        >
-          <UploadIcon style={styles.btnIcon} />
-          <Text style={styles.btnText}>Upload Photo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={openCamera}
-          style={[styles.actionButton, styles.secondaryButton]}
-        >
-          <CameraIcon style={styles.btnIcon} />
-          <Text style={styles.btnText}>Use Camera</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-};
-
-const GeneratedImageDisplay: React.FC<{
-  sourceImage: string;
-  generatedImage: string;
-  onReset: () => void;
-}> = ({ sourceImage, generatedImage, onReset }) => {
-  const viewShotRef = useRef<any>(null);
-  const [isSharing, setIsSharing] = useState(false);
-
-  const captureWatermarkedImage = async () => {
-    try {
-      if (viewShotRef.current) {
-        const uri = await captureRef(viewShotRef, {
-          format: "jpg",
-          quality: 0.9,
-          result: "tmpfile",
-        });
-        return uri;
-      }
-    } catch (error) {
-      console.error("Capture failed", error);
-      Alert.alert("Error", "Failed to prepare image for sharing.");
-    }
-    return null;
-  };
-
-  const handleDownload = async () => {
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission needed", "We need permission to save photos.");
-        return;
-      }
-
-      const uri = await captureWatermarkedImage();
-      if (uri) {
-        await MediaLibrary.saveToLibraryAsync(uri);
-        Alert.alert("Saved!", "Your design (with watermark) has been saved.");
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to save image.");
-    }
-  };
-
-  const handleShare = async () => {
-    if (isSharing) return;
-    setIsSharing(true);
-    try {
-      const uri = await captureWatermarkedImage();
-      if (uri) {
-        if (!(await Sharing.isAvailableAsync())) {
-          Alert.alert("Error", "Sharing is not available on this device");
-          return;
-        }
-        await Sharing.shareAsync(uri, {
-          mimeType: "image/jpeg",
-          dialogTitle: "Share your dream room",
-          UTI: "public.jpeg",
-        });
-      }
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
-    } finally {
-      setIsSharing(false);
-    }
-  };
-
-  return (
-    <View style={styles.resultContainer}>
-      <Text style={styles.resultHeader}>Your New Space</Text>
-
-      <View style={styles.imageComparison}>
-        <View style={styles.imageWrapper}>
-          <View style={styles.imageBadge}>
-            <Text style={styles.badgeText}>Original</Text>
-          </View>
-          <Image source={{ uri: sourceImage }} style={styles.resultImg} />
-        </View>
-
-        <ViewShot
-          ref={viewShotRef}
-          style={styles.watermarkWrapper}
-          options={{ format: "jpg", quality: 0.9 }}
-        >
-          <View style={styles.imageWrapperNoMargin}>
-            <View style={[styles.imageBadge, { backgroundColor: "#6366F1" }]}>
-              <Text style={styles.badgeText}>AI Design</Text>
-            </View>
-            <Image source={{ uri: generatedImage }} style={styles.resultImg} />
-          </View>
-
-          <View style={styles.watermarkFooter}>
-            <Text style={styles.watermarkText}>
-              This image is decorated by Ai Home Decorator (aihomedecorator.com)
-            </Text>
-          </View>
-        </ViewShot>
-      </View>
-
-      <View style={styles.resultActions}>
-        <TouchableOpacity
-          onPress={onReset}
-          style={[styles.actionButton, styles.secondaryButton]}
-        >
-          <ResetIcon style={styles.btnIcon} />
-          <Text style={styles.btnText}>Start Over</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleDownload}
-          style={[styles.actionButton, styles.primaryButton]}
-        >
-          <DownloadIcon style={styles.btnIcon} />
-          <Text style={styles.btnText}>Save</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleShare}
-          style={[styles.actionButton, styles.accentButton]}
-          disabled={isSharing}
-        >
-          <ShareIcon style={styles.btnIcon} />
-          <Text style={styles.btnText}>{isSharing ? "..." : "Share"}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity 
-        style={styles.upsellButton} 
-        onPress={() => {
-          Alert.alert(
-            "Premium Feature", 
-            "Removing the watermark costs 1 credit. (Implementation pending for backend un-watermarked request)"
-          );
-        }}
-      >
-        <Text style={styles.upsellButtonText}>✨ Remove Watermark & Save HD (1 Credit)</Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
+import Loader from "../components/Loader";
+import { ImageUploader } from "../components/home/ImageUploader";
+import { DesignHistory } from "../components/home/DesignHistory";
+import { GeneratedImageDisplay } from "../components/home/GeneratedImageDisplay";
+import { InfoGuide } from "../components/home/InfoGuide";
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const [sourceFileUri, setSourceFileUri] = useState<string | null>(null);
-  const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
-  const [customPrompt, setCustomPrompt] = useState<string>("");
-  const [roomType, setRoomType] = useState<string>("");
-  const [selectedStyle, setSelectedStyle] = useState<Style | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [decorMode, setDecorMode] = useState<"style" | "custom">("style");
-  const [activeAccordion, setActiveAccordion] = useState<string | null>(STYLE_CATEGORIES[0].name);
-  const [credits, setCredits] = useState(0);
-  const [history, setHistory] = useState<any[]>([]);
-  const [isCreditAlertVisible, setIsCreditAlertVisible] = useState(false);
-
-  const { session, logout } = useAuth();
-
-  const fetchUserData = async () => {
-    if (!session?.user) return;
-    try {
-      // Fetch Credits
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("generation_credits")
-        .eq("id", session.user.id)
-        .single();
-      if (profile) setCredits(profile.generation_credits);
-
-      // Fetch Design History
-      const { data: designs } = await supabase
-        .from("user_designs")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      if (designs) setHistory(designs);
-    } catch (err) {
-      console.log("Error fetching user data:", err);
-    }
-  };
+  const { state, actions } = useHomeState(navigation);
 
   useFocusEffect(
-    useCallback(() => {
-      fetchUserData();
-    }, [session])
+    React.useCallback(() => {
+      actions.fetchUserData();
+    }, [actions.fetchUserData])
   );
 
-  const handleImageSelect = (uri: string) => {
-    setSourceFileUri(uri);
-    setSourceImageUrl(uri);
-    setGeneratedImageUrl(null);
-  };
+  if (state.isLoading) return <Loader />;
 
-  const resetState = () => {
-    setSourceFileUri(null);
-    setSourceImageUrl(null);
-    setGeneratedImageUrl(null);
-    setCustomPrompt("");
-    setSelectedStyle(null);
-    setError(null);
-    setDecorMode("style");
-    setRoomType("");
-  };
-
-  const handleDecorate = async () => {
-    if (!sourceFileUri || !roomType) {
-      Alert.alert("Action Required", "Please select a room image and type.");
-      return;
-    }
-
-    const decorationPrompt = decorMode === "style" ? selectedStyle?.prompt : customPrompt;
-    const creditCost = decorMode === "style" ? 1 : 3;
-
-    if (!decorationPrompt) {
-      Alert.alert("Action Required", "Please select a style.");
-      return;
-    }
-
-    if (credits < creditCost) {
-      setIsCreditAlertVisible(true);
-      return;
-    }
-
-    setError(null);
-    setIsLoading(true);
-
-    try {
-      const result = await geminiService.decorateRoom(
-        sourceFileUri,
-        decorationPrompt,
-        roomType
-      );
-      
-      // Save to Supabase History
-      await supabase.from("user_designs").insert({
-        user_id: session?.user.id,
-        original_image_url: sourceImageUrl, 
-        generated_image_url: result,
-        room_type: roomType,
-        style_name: decorMode === "style" ? selectedStyle?.name : "Custom",
-      });
-
-      setGeneratedImageUrl(result);
-      setCredits((prev) => Math.max(0, prev - creditCost));
-      fetchUserData(); 
-    } catch (e: any) {
-      const errorMessage = e.message || "An unknown error occurred.";
-      if (errorMessage.includes("Invalid or expired token")) {
-        Alert.alert("Session Expired", "Please log in again.", [{ text: "Logout", onPress: logout }]);
-      } else {
-        setError(errorMessage);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading) return <Loader />;
-  
-  if (generatedImageUrl && sourceImageUrl) {
+  // Display the generated image if we have both source and result
+  if (state.generatedImageUrl && state.sourceImageUrl) {
     return (
       <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
-        <Header />
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <GeneratedImageDisplay
-            sourceImage={sourceImageUrl}
-            generatedImage={generatedImageUrl}
-            onReset={resetState}
-          />
-        </ScrollView>
+         <Header />
+         <ScrollView contentContainerStyle={styles.scrollContent}>
+           <GeneratedImageDisplay 
+              sourceImage={state.sourceImageUrl} 
+              generatedImage={state.generatedImageUrl} 
+              onReset={actions.resetState} 
+           />
+         </ScrollView>
       </SafeAreaView>
     );
   }
 
+  // Main UI
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
-      <CustomAlertModal
-        visible={isCreditAlertVisible}
-        title="Out of Credits"
-        message="You need more credits to continue decorating."
-        onCancel={() => setIsCreditAlertVisible(false)}
-        onConfirm={() => {
-          setIsCreditAlertVisible(false);
-          navigation.navigate("BuyCredits");
-        }}
-        confirmText="GET CREDITS"
-      />
-
       <Header>
-        <TouchableOpacity onPress={logout} style={styles.headerBtn}>
+        <TouchableOpacity onPress={actions.logout} style={styles.headerBtn}>
           <Text style={styles.headerBtnText}>Log Out</Text>
         </TouchableOpacity>
       </Header>
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {error && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        {!sourceImageUrl ? (
+        {!state.sourceImageUrl ? (
           <>
-            <DesignHistory history={history} />
-            <ImageUploader onImageSelected={handleImageSelect} />
+            {/* Step 1: User hasn't uploaded an image yet */}
+            <DesignHistory history={state.history} />
+            <ImageUploader onImageSelected={actions.setSourceImageUrl} />
             <InfoGuide />
           </>
         ) : (
-          <View style={styles.workspace}>
-            <TouchableOpacity
-              style={styles.homeSaleIndicator}
-              onPress={() => navigation.navigate("BuyCredits")}
-            >
-              <View style={styles.homeSaleTextContainer}>
-                <Text style={styles.homeSaleTitle}>FLASH SALE: 50% OFF!</Text>
-                <Text style={styles.homeSaleSubtitle}>All credit packs are half price.</Text>
-              </View>
-              <View style={styles.homeSaleButton}>
-                <Text style={styles.homeSaleButtonText}>GET OFFER</Text>
-              </View>
-            </TouchableOpacity>
-
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.stepBadge}><Text style={styles.stepText}>1</Text></View>
-                <Text style={styles.cardTitle}>Your Room</Text>
-              </View>
-              <View style={styles.previewContainer}>
-                <Image source={{ uri: sourceImageUrl }} style={styles.previewImage} />
-                <TouchableOpacity onPress={resetState} style={styles.retakeBtn}>
-                  <Text style={styles.retakeText}>Change Photo</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Room Type</Text>
-                <RoomTypePicker value={roomType} onSelect={setRoomType} />
-              </View>
-            </View>
-
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.stepBadge}><Text style={styles.stepText}>2</Text></View>
-                <Text style={styles.cardTitle}>Design Style</Text>
-              </View>
-              <View style={styles.segmentedControl}>
-                <TouchableOpacity
-                  style={[styles.segment, decorMode === "style" && styles.segmentActive]}
-                  onPress={() => setDecorMode("style")}
-                >
-                  <Text style={[styles.segmentText, decorMode === "style" && styles.segmentTextActive]}>Presets</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.segment, decorMode === "custom" && styles.segmentActive]}
-                  onPress={() => setDecorMode("custom")}
-                >
-                  <Text style={[styles.segmentText, decorMode === "custom" && styles.segmentTextActive]}>Custom</Text>
-                </TouchableOpacity>
-              </View>
-
-              {decorMode === "style" ? (
-                <View style={styles.styleList}>
-                  {STYLE_CATEGORIES.map((cat) => (
-                    <View key={cat.name} style={styles.accordion}>
-                      <TouchableOpacity
-                        style={styles.accordionHeader}
-                        onPress={() => setActiveAccordion(activeAccordion === cat.name ? null : cat.name)}
-                      >
-                        <Text style={styles.accordionTitle}>{cat.name}</Text>
-                        <AccordionChevronIcon style={{ color: "#94A3B8" }} active={activeAccordion === cat.name} />
-                      </TouchableOpacity>
-                      {activeAccordion === cat.name && (
-                        <View style={styles.styleGrid}>
-                          {cat.styles.map((s) => (
-                            <TouchableOpacity
-                              key={s.name}
-                              style={[styles.styleChip, selectedStyle?.name === s.name && styles.styleChipActive]}
-                              onPress={() => setSelectedStyle(s)}
-                            >
-                              <Text style={[styles.styleChipText, selectedStyle?.name === s.name && styles.styleChipTextActive]}>{s.name}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      )}
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.customInputContainer}>
-                  <View style={styles.infoBox}>
-                    <Text style={styles.infoTitle}>🌟 Advanced Custom Design</Text>
-                    <Text style={styles.infoText}>Uses our premium AI model for detailed requests. (3 credits)</Text>
-                  </View>
-                  <TextInput
-                    style={styles.textArea}
-                    placeholder="Describe your dream room..."
-                    placeholderTextColor="#64748B"
-                    multiline
-                    value={customPrompt}
-                    onChangeText={setCustomPrompt}
-                    maxLength={250}
-                  />
-                  <Text style={styles.charCount}>{customPrompt.length}/250</Text>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.generateSection}>
-              <TouchableOpacity style={styles.generateBtn} onPress={handleDecorate}>
-                <DecorateIcon style={{ color: "white", marginRight: 8 }} />
-                <Text style={styles.generateBtnText}>Generate Design</Text>
-                <View style={styles.creditBadge}><Text style={styles.creditBadgeText}>{decorMode === "style" ? 1 : 3}</Text></View>
-              </TouchableOpacity>
-              <Text style={styles.balanceText}>You have {credits} credits available</Text>
-            </View>
+          <View style={styles.configurationContainer}>
+             {/* Step 2: User uploaded an image, show configuration UI */}
+             {/* FIX: Replaced the raw comment with an actual View to satisfy JSX rules */}
+             <Text style={styles.configText}>
+               Image uploaded! Bring in your RoomTypePicker and Styles here.
+             </Text>
+             
+             {/* Temporary reset button so you don't get stuck */}
+             <TouchableOpacity 
+               style={styles.cancelBtn} 
+               onPress={actions.resetState}
+             >
+               <Text style={styles.cancelBtnText}>Cancel & Reselect Image</Text>
+             </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -712,124 +78,50 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   );
 };
 
+// Brought back basic layout styles to prevent redlines
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0F172A" },
-  scrollContent: { padding: 16, paddingBottom: 40 },
-  headerBtn: { backgroundColor: "#334155", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  headerBtnText: { color: "#F8FAFC", fontSize: 12, fontWeight: "600" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.7)", justifyContent: "center", alignItems: "center", padding: 20 },
-  customAlertCard: { backgroundColor: "#1E293B", borderRadius: 20, padding: 24, width: "100%", maxWidth: 340, borderWidth: 1, borderColor: "#334155", alignItems: "center" },
-  alertTitle: { fontSize: 20, fontWeight: "800", color: "#F8FAFC", marginBottom: 12 },
-  alertMessage: { fontSize: 15, color: "#94A3B8", textAlign: "center", marginBottom: 24, lineHeight: 22 },
-  alertActions: { flexDirection: "row", width: "100%", justifyContent: "flex-end", gap: 16 },
-  alertBtnCancel: { paddingVertical: 10, paddingHorizontal: 12 },
-  alertBtnTextCancel: { color: "#6366F1", fontWeight: "700", fontSize: 14 },
-  alertBtnConfirm: { paddingVertical: 10, paddingHorizontal: 12 },
-  alertBtnTextConfirm: { color: "#6366F1", fontWeight: "700", fontSize: 14 },
-  customPickerButton: { backgroundColor: "#0F172A", borderRadius: 12, borderWidth: 1, borderColor: "#334155", height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16 },
-  customPickerText: { color: "#F8FAFC", fontSize: 15, fontWeight: "500" },
-  pickerModalContainer: { backgroundColor: "#1E293B", borderRadius: 24, width: "100%", maxHeight: "80%", borderWidth: 1, borderColor: "#334155", overflow: "hidden" },
-  pickerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: "#334155", backgroundColor: "#0F172A" },
-  pickerTitle: { color: "#F8FAFC", fontSize: 18, fontWeight: "700" },
-  pickerCloseText: { color: "#6366F1", fontSize: 15, fontWeight: "600" },
-  pickerItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: "#334155", flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  pickerItemActive: { backgroundColor: "rgba(99,102,241,0.15)" },
-  pickerItemText: { color: "#CBD5E1", fontSize: 16 },
-  pickerItemTextActive: { color: "#818CF8", fontWeight: "700" },
-  checkmark: { width: 20, height: 20, borderRadius: 10, backgroundColor: "#6366F1", alignItems: "center", justifyContent: "center" },
-  errorBanner: { backgroundColor: "rgba(239,68,68,0.15)", borderColor: "#EF4444", borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 16 },
-  errorText: { color: "#EF4444", textAlign: "center", fontSize: 14 },
-  uploadCard: { backgroundColor: "#1E293B", borderRadius: 24, padding: 32, alignItems: "center", borderWidth: 2, borderColor: "#334155", borderStyle: "dashed", marginTop: 20 },
-  uploadIconContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(99,102,241,0.1)", justifyContent: "center", alignItems: "center", marginBottom: 16 },
-  uploadTitle: { fontSize: 22, fontWeight: "700", color: "#F8FAFC", marginBottom: 8 },
-  uploadSubtitle: { fontSize: 15, color: "#94A3B8", textAlign: "center", marginBottom: 24, lineHeight: 22 },
-  uploadActions: { width: "100%", gap: 12 },
-  actionButton: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", height: 52, borderRadius: 14, paddingHorizontal: 4 },
-  primaryButton: { backgroundColor: "#6366F1" },
-  secondaryButton: { backgroundColor: "#334155" },
-  accentButton: { backgroundColor: "#8B5CF6" },
-  btnText: { color: "#FFF", fontWeight: "600", fontSize: 14, marginLeft: 8 },
-  btnIcon: { color: "#FFF" },
-  workspace: { gap: 24 },
-  card: { backgroundColor: "#1E293B", borderRadius: 20, padding: 20, borderWidth: 1, borderColor: "#334155" },
-  cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
-  stepBadge: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#6366F1", justifyContent: "center", alignItems: "center", marginRight: 12 },
-  stepText: { color: "#FFF", fontWeight: "bold", fontSize: 14 },
-  cardTitle: { fontSize: 18, fontWeight: "700", color: "#F8FAFC" },
-  previewContainer: { height: 200, borderRadius: 16, overflow: "hidden", marginBottom: 20, position: "relative" },
-  previewImage: { width: "100%", height: "100%" },
-  retakeBtn: { position: "absolute", bottom: 12, right: 12, backgroundColor: "rgba(0,0,0,0.7)", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  retakeText: { color: "#FFF", fontSize: 12, fontWeight: "600" },
-  inputContainer: {},
-  inputLabel: { color: "#CBD5E1", fontSize: 14, fontWeight: "600", marginBottom: 8, marginLeft: 4 },
-  segmentedControl: { flexDirection: "row", backgroundColor: "#0F172A", padding: 4, borderRadius: 12, marginBottom: 20 },
-  segment: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center" },
-  segmentActive: { backgroundColor: "#334155" },
-  segmentText: { color: "#94A3B8", fontWeight: "600" },
-  segmentTextActive: { color: "#F8FAFC" },
-  styleList: { gap: 12 },
-  accordion: { backgroundColor: "#0F172A", borderRadius: 12, overflow: "hidden" },
-  accordionHeader: { flexDirection: "row", justifyContent: "space-between", padding: 16, alignItems: "center" },
-  accordionTitle: { color: "#F8FAFC", fontWeight: "600", fontSize: 15 },
-  styleGrid: { flexDirection: "row", flexWrap: "wrap", padding: 12, gap: 10, paddingTop: 0 },
-  styleChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 100, backgroundColor: "#1E293B", borderWidth: 1, borderColor: "#334155" },
-  styleChipActive: { backgroundColor: "#6366F1", borderColor: "#6366F1" },
-  styleChipText: { color: "#CBD5E1", fontSize: 13 },
-  styleChipTextActive: { color: "#FFF", fontWeight: "700" },
-  customInputContainer: {},
-  infoBox: { backgroundColor: "rgba(139, 92, 246, 0.1)", padding: 12, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: "rgba(139, 92, 246, 0.3)" },
-  infoTitle: { color: "#C4B5FD", fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
-  infoText: { color: "#A78BFA", fontSize: 13 },
-  textArea: { backgroundColor: "#0F172A", borderRadius: 16, padding: 16, color: "#F8FAFC", height: 120, textAlignVertical: "top", borderWidth: 1, borderColor: "#334155" },
-  charCount: { color: "#64748B", fontSize: 12, textAlign: "right", marginTop: 8 },
-  generateSection: { marginTop: 12, alignItems: "center" },
-  generateBtn: { width: "100%", backgroundColor: "#6366F1", height: 56, borderRadius: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", shadowColor: "#6366F1", shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
-  generateBtnText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
-  creditBadge: { backgroundColor: "rgba(255,255,255,0.2)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginLeft: 10 },
-  creditBadgeText: { color: "#FFF", fontWeight: "bold", fontSize: 12 },
-  balanceText: { color: "#94A3B8", marginTop: 16, fontSize: 14 },
-  resultContainer: { alignItems: "center", marginTop: 20 },
-  resultHeader: { fontSize: 28, fontWeight: "800", color: "#F8FAFC", marginBottom: 24 },
-  imageComparison: { width: "100%", gap: 20 },
-  imageWrapper: { borderRadius: 20, overflow: "hidden", backgroundColor: "#1E293B", position: "relative" },
-  resultImg: { width: "100%", aspectRatio: 1 },
-  imageBadge: { position: "absolute", top: 16, left: 16, backgroundColor: "rgba(0,0,0,0.7)", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 100, zIndex: 10 },
-  badgeText: { color: "#FFF", fontSize: 12, fontWeight: "bold" },
-  resultActions: { flexDirection: "row", width: "100%", gap: 12, marginTop: 24 },
-  cameraOverlay: { flex: 1, justifyContent: "space-between", padding: 20 },
-  cameraCloseBtn: { alignSelf: "flex-end", padding: 10, backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20 },
-  cameraCloseText: { color: "#FFF", fontWeight: "600" },
-  cameraBottomBar: { alignItems: "center", marginBottom: 20 },
-  shutterButton: { width: 72, height: 72, borderRadius: 36, borderWidth: 4, borderColor: "#FFF", alignItems: "center", justifyContent: "center" },
-  shutterInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: "#FFF" },
-  watermarkWrapper: { backgroundColor: "#1E293B", borderRadius: 20, overflow: "hidden" },
-  imageWrapperNoMargin: { position: "relative" },
-  watermarkFooter: { backgroundColor: "#0F172A", paddingVertical: 10, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", width: "100%" },
-  watermarkText: { color: "#94A3B8", fontSize: 10, fontWeight: "500", textAlign: "center" },
-  upsellButton: { marginTop: 16, backgroundColor: "rgba(99, 102, 241, 0.15)", borderWidth: 1, borderColor: "#6366F1", paddingVertical: 14, borderRadius: 14, width: "100%", alignItems: "center" },
-  upsellButtonText: { color: "#818CF8", fontWeight: "700", fontSize: 15 },
-  homeSaleIndicator: { backgroundColor: "rgba(99, 102, 241, 0.15)", borderWidth: 1, borderColor: "#6366F1", borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
-  homeSaleTextContainer: { flex: 1 },
-  homeSaleTitle: { color: "#818CF8", fontWeight: "900", fontSize: 15 },
-  homeSaleSubtitle: { color: "#94A3B8", fontSize: 12, marginTop: 2 },
-  homeSaleButton: { backgroundColor: "#6366F1", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, marginLeft: 12 },
-  homeSaleButtonText: { color: "white", fontWeight: "bold", fontSize: 12 },
-  
-  // Guide and History specific styles
-  infoSection: { marginTop: 32, backgroundColor: "#1E293B", borderRadius: 20, padding: 20, borderWidth: 1, borderColor: "#334155" },
-  infoHeading: { fontSize: 18, fontWeight: "800", color: "#F8FAFC", marginBottom: 16 },
-  benefitRow: { flexDirection: "row", marginBottom: 12 },
-  benefitText: { color: "#94A3B8", fontSize: 14, lineHeight: 20 },
-  boldText: { color: "#F8FAFC", fontWeight: "700" },
-  stepRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
-  stepNumber: { width: 24, height: 24, borderRadius: 12, backgroundColor: "#6366F1", justifyContent: "center", alignItems: "center", marginRight: 12 },
-  stepNumberText: { color: "#FFF", fontSize: 12, fontWeight: "bold" },
-  stepText: { color: "#94A3B8", fontSize: 14 },
-  historyContainer: { marginBottom: 24 },
-  historyScroll: { flexDirection: "row" },
-  historyCard: { width: 140, marginRight: 12, backgroundColor: "#1E293B", borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: "#334155" },
-  historyImage: { width: "100%", height: 100 },
-  historyLabel: { padding: 8, fontSize: 10, color: "#94A3B8", textAlign: "center" },
+  container: { 
+    flex: 1, 
+    backgroundColor: "#0F172A" 
+  },
+  scrollContent: { 
+    padding: 16, 
+    paddingBottom: 40 
+  },
+  headerBtn: { 
+    backgroundColor: "#334155", 
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 8 
+  },
+  headerBtnText: { 
+    color: "#F8FAFC", 
+    fontSize: 12, 
+    fontWeight: "600" 
+  },
+  configurationContainer: {
+    padding: 20,
+    alignItems: "center",
+    backgroundColor: "#1E293B",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  configText: {
+    color: "#94A3B8",
+    marginBottom: 20,
+    textAlign: "center"
+  },
+  cancelBtn: {
+    backgroundColor: "#EF4444",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12
+  },
+  cancelBtnText: {
+    color: "white",
+    fontWeight: "bold"
+  }
 });
 
 export default HomeScreen;
