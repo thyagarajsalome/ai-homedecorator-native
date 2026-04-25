@@ -175,6 +175,55 @@ const CameraModal: React.FC<{
   );
 };
 
+// --- 4. Info Guide Component ---
+const InfoGuide: React.FC = () => (
+  <View style={styles.infoSection}>
+    <Text style={styles.infoHeading}>Why use AI Decorator?</Text>
+    <View style={styles.benefitRow}>
+      <Text style={styles.benefitText}>✨ <Text style={styles.boldText}>Instant Inspiration:</Text> Visualize a new look in seconds.</Text>
+    </View>
+    <View style={styles.benefitRow}>
+      <Text style={styles.benefitText}>💰 <Text style={styles.boldText}>Save Money:</Text> Test styles before buying expensive furniture.</Text>
+    </View>
+    <View style={styles.benefitRow}>
+      <Text style={styles.benefitText}>🏠 <Text style={styles.boldText}>Perfect Fit:</Text> AI understands your room's unique layout.</Text>
+    </View>
+    
+    <Text style={[styles.infoHeading, { marginTop: 24 }]}>How it Works</Text>
+    <View style={styles.stepRow}>
+      <View style={styles.stepNumber}><Text style={styles.stepNumberText}>1</Text></View>
+      <Text style={styles.stepText}><Text style={styles.boldText}>Snap:</Text> Take a clear photo of your room.</Text>
+    </View>
+    <View style={styles.stepRow}>
+      <View style={styles.stepNumber}><Text style={styles.stepNumberText}>2</Text></View>
+      <Text style={styles.stepText}><Text style={styles.boldText}>Select:</Text> Choose a room type and style.</Text>
+    </View>
+    <View style={styles.stepRow}>
+      <View style={styles.stepNumber}><Text style={styles.stepNumberText}>3</Text></View>
+      <Text style={styles.stepText}><Text style={styles.boldText}>Decorate:</Text> Let AI transform your space instantly.</Text>
+    </View>
+  </View>
+);
+
+// --- 5. Design History Component ---
+const DesignHistory: React.FC<{ history: any[] }> = ({ history }) => {
+  if (history.length === 0) return null;
+
+  return (
+    <View style={styles.historyContainer}>
+      <Text style={styles.sectionTitle}>Your Recent Designs</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.historyScroll}>
+        {history.map((item) => (
+          <View key={item.id} style={styles.historyCard}>
+            <Image source={{ uri: item.generated_image_url }} style={styles.historyImage} />
+            <Text style={styles.historyLabel}>{item.room_type} • {item.style_name}</Text>
+          </View>
+        ))}
+      </ScrollView>
+    </View>
+  );
+};
+
 // --- Main Components ---
 
 const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
@@ -244,7 +293,6 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
     </View>
   );
 };
-
 
 const GeneratedImageDisplay: React.FC<{
   sourceImage: string;
@@ -387,43 +435,46 @@ const GeneratedImageDisplay: React.FC<{
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [sourceFileUri, setSourceFileUri] = useState<string | null>(null);
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
-    null
-  );
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState<string>("");
   const [roomType, setRoomType] = useState<string>("");
   const [selectedStyle, setSelectedStyle] = useState<Style | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [decorMode, setDecorMode] = useState<"style" | "custom">("style");
-  const [activeAccordion, setActiveAccordion] = useState<string | null>(
-    STYLE_CATEGORIES[0].name
-  );
+  const [activeAccordion, setActiveAccordion] = useState<string | null>(STYLE_CATEGORIES[0].name);
   const [credits, setCredits] = useState(0);
+  const [history, setHistory] = useState<any[]>([]);
   const [isCreditAlertVisible, setIsCreditAlertVisible] = useState(false);
 
   const { session, logout } = useAuth();
 
+  const fetchUserData = async () => {
+    if (!session?.user) return;
+    try {
+      // Fetch Credits
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("generation_credits")
+        .eq("id", session.user.id)
+        .single();
+      if (profile) setCredits(profile.generation_credits);
+
+      // Fetch Design History
+      const { data: designs } = await supabase
+        .from("user_designs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (designs) setHistory(designs);
+    } catch (err) {
+      console.log("Error fetching user data:", err);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-      const fetchCredits = async () => {
-        if (!session?.user) return;
-        try {
-          const { data } = await supabase
-            .from("user_profiles")
-            .select("generation_credits")
-            .eq("id", session.user.id)
-            .single();
-          if (data && isActive) setCredits(data.generation_credits);
-        } catch (err) {
-          console.log("Error fetching credits:", err);
-        }
-      };
-      fetchCredits();
-      return () => {
-        isActive = false;
-      };
+      fetchUserData();
     }, [session])
   );
 
@@ -445,28 +496,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const handleDecorate = async () => {
-    if (!sourceFileUri) {
-      Alert.alert("Action Required", "Please upload an image first.");
+    if (!sourceFileUri || !roomType) {
+      Alert.alert("Action Required", "Please select a room image and type.");
       return;
     }
 
-    if (!roomType) {
-      Alert.alert(
-        "Action Required",
-        "Please select a Room Type (e.g., Living Room) to continue."
-      );
-      return;
-    }
-
-    const decorationPrompt =
-      decorMode === "style" ? selectedStyle?.prompt : customPrompt;
+    const decorationPrompt = decorMode === "style" ? selectedStyle?.prompt : customPrompt;
     const creditCost = decorMode === "style" ? 1 : 3;
 
     if (!decorationPrompt) {
-      Alert.alert(
-        "Action Required",
-        "Please select a style or enter a custom design description."
-      );
+      Alert.alert("Action Required", "Please select a style.");
       return;
     }
 
@@ -484,18 +523,23 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         decorationPrompt,
         roomType
       );
+      
+      // Save to Supabase History
+      await supabase.from("user_designs").insert({
+        user_id: session?.user.id,
+        original_image_url: sourceImageUrl, 
+        generated_image_url: result,
+        room_type: roomType,
+        style_name: decorMode === "style" ? selectedStyle?.name : "Custom",
+      });
+
       setGeneratedImageUrl(result);
       setCredits((prev) => Math.max(0, prev - creditCost));
+      fetchUserData(); 
     } catch (e: any) {
       const errorMessage = e.message || "An unknown error occurred.";
-      if (
-        errorMessage.includes("Invalid or expired token") ||
-        errorMessage.includes("JWT")
-      ) {
-        Alert.alert("Session Expired", "Please log in again.", [
-          { text: "Logout", onPress: logout },
-        ]);
-        setError("Session expired. Please login again.");
+      if (errorMessage.includes("Invalid or expired token")) {
+        Alert.alert("Session Expired", "Please log in again.", [{ text: "Logout", onPress: logout }]);
       } else {
         setError(errorMessage);
       }
@@ -505,12 +549,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   if (isLoading) return <Loader />;
+  
   if (generatedImageUrl && sourceImageUrl) {
     return (
-      <SafeAreaView
-        style={styles.container}
-        edges={["bottom", "left", "right"]}
-      >
+      <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
         <Header />
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <GeneratedImageDisplay
@@ -542,6 +584,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={styles.headerBtnText}>Log Out</Text>
         </TouchableOpacity>
       </Header>
+      
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {error && (
           <View style={styles.errorBanner}>
@@ -550,7 +593,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         )}
 
         {!sourceImageUrl ? (
-          <ImageUploader onImageSelected={handleImageSelect} />
+          <>
+            <DesignHistory history={history} />
+            <ImageUploader onImageSelected={handleImageSelect} />
+            <InfoGuide />
+          </>
         ) : (
           <View style={styles.workspace}>
             <TouchableOpacity
@@ -559,9 +606,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             >
               <View style={styles.homeSaleTextContainer}>
                 <Text style={styles.homeSaleTitle}>FLASH SALE: 50% OFF!</Text>
-                <Text style={styles.homeSaleSubtitle}>
-                  All credit packs are half price.
-                </Text>
+                <Text style={styles.homeSaleSubtitle}>All credit packs are half price.</Text>
               </View>
               <View style={styles.homeSaleButton}>
                 <Text style={styles.homeSaleButtonText}>GET OFFER</Text>
@@ -570,22 +615,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <View style={styles.stepBadge}>
-                  <Text style={styles.stepText}>1</Text>
-                </View>
+                <View style={styles.stepBadge}><Text style={styles.stepText}>1</Text></View>
                 <Text style={styles.cardTitle}>Your Room</Text>
               </View>
-
               <View style={styles.previewContainer}>
-                <Image
-                  source={{ uri: sourceImageUrl }}
-                  style={styles.previewImage}
-                />
+                <Image source={{ uri: sourceImageUrl }} style={styles.previewImage} />
                 <TouchableOpacity onPress={resetState} style={styles.retakeBtn}>
                   <Text style={styles.retakeText}>Change Photo</Text>
                 </TouchableOpacity>
               </View>
-
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Room Type</Text>
                 <RoomTypePicker value={roomType} onSelect={setRoomType} />
@@ -594,44 +632,21 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <View style={styles.stepBadge}>
-                  <Text style={styles.stepText}>2</Text>
-                </View>
+                <View style={styles.stepBadge}><Text style={styles.stepText}>2</Text></View>
                 <Text style={styles.cardTitle}>Design Style</Text>
               </View>
-
               <View style={styles.segmentedControl}>
                 <TouchableOpacity
-                  style={[
-                    styles.segment,
-                    decorMode === "style" && styles.segmentActive,
-                  ]}
+                  style={[styles.segment, decorMode === "style" && styles.segmentActive]}
                   onPress={() => setDecorMode("style")}
                 >
-                  <Text
-                    style={[
-                      styles.segmentText,
-                      decorMode === "style" && styles.segmentTextActive,
-                    ]}
-                  >
-                    Presets
-                  </Text>
+                  <Text style={[styles.segmentText, decorMode === "style" && styles.segmentTextActive]}>Presets</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[
-                    styles.segment,
-                    decorMode === "custom" && styles.segmentActive,
-                  ]}
+                  style={[styles.segment, decorMode === "custom" && styles.segmentActive]}
                   onPress={() => setDecorMode("custom")}
                 >
-                  <Text
-                    style={[
-                      styles.segmentText,
-                      decorMode === "custom" && styles.segmentTextActive,
-                    ]}
-                  >
-                    Custom
-                  </Text>
+                  <Text style={[styles.segmentText, decorMode === "custom" && styles.segmentTextActive]}>Custom</Text>
                 </TouchableOpacity>
               </View>
 
@@ -641,40 +656,20 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     <View key={cat.name} style={styles.accordion}>
                       <TouchableOpacity
                         style={styles.accordionHeader}
-                        onPress={() =>
-                          setActiveAccordion(
-                            activeAccordion === cat.name ? null : cat.name
-                          )
-                        }
+                        onPress={() => setActiveAccordion(activeAccordion === cat.name ? null : cat.name)}
                       >
                         <Text style={styles.accordionTitle}>{cat.name}</Text>
-                        <AccordionChevronIcon
-                          style={{ color: "#94A3B8" }}
-                          active={activeAccordion === cat.name}
-                        />
+                        <AccordionChevronIcon style={{ color: "#94A3B8" }} active={activeAccordion === cat.name} />
                       </TouchableOpacity>
-
                       {activeAccordion === cat.name && (
                         <View style={styles.styleGrid}>
                           {cat.styles.map((s) => (
                             <TouchableOpacity
                               key={s.name}
-                              style={[
-                                styles.styleChip,
-                                selectedStyle?.name === s.name &&
-                                  styles.styleChipActive,
-                              ]}
+                              style={[styles.styleChip, selectedStyle?.name === s.name && styles.styleChipActive]}
                               onPress={() => setSelectedStyle(s)}
                             >
-                              <Text
-                                style={[
-                                  styles.styleChipText,
-                                  selectedStyle?.name === s.name &&
-                                    styles.styleChipTextActive,
-                                ]}
-                              >
-                                {s.name}
-                              </Text>
+                              <Text style={[styles.styleChipText, selectedStyle?.name === s.name && styles.styleChipTextActive]}>{s.name}</Text>
                             </TouchableOpacity>
                           ))}
                         </View>
@@ -686,42 +681,29 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <View style={styles.customInputContainer}>
                   <View style={styles.infoBox}>
                     <Text style={styles.infoTitle}>🌟 Advanced Custom Design</Text>
-                    <Text style={styles.infoText}>
-                      Uses our premium AI model for highly detailed, specific requests. (Costs 3 credits)
-                    </Text>
+                    <Text style={styles.infoText}>Uses our premium AI model for detailed requests. (3 credits)</Text>
                   </View>
                   <TextInput
                     style={styles.textArea}
-                    placeholder="Describe your dream room... (e.g. 'Cyberpunk living room with neon lights')"
+                    placeholder="Describe your dream room..."
                     placeholderTextColor="#64748B"
                     multiline
                     value={customPrompt}
                     onChangeText={setCustomPrompt}
                     maxLength={250}
                   />
-                  <Text style={styles.charCount}>
-                    {customPrompt.length}/250
-                  </Text>
+                  <Text style={styles.charCount}>{customPrompt.length}/250</Text>
                 </View>
               )}
             </View>
 
             <View style={styles.generateSection}>
-              <TouchableOpacity
-                style={styles.generateBtn}
-                onPress={handleDecorate}
-              >
+              <TouchableOpacity style={styles.generateBtn} onPress={handleDecorate}>
                 <DecorateIcon style={{ color: "white", marginRight: 8 }} />
                 <Text style={styles.generateBtnText}>Generate Design</Text>
-                <View style={styles.creditBadge}>
-                  <Text style={styles.creditBadgeText}>
-                    {decorMode === "style" ? 1 : 3}
-                  </Text>
-                </View>
+                <View style={styles.creditBadge}><Text style={styles.creditBadgeText}>{decorMode === "style" ? 1 : 3}</Text></View>
               </TouchableOpacity>
-              <Text style={styles.balanceText}>
-                You have {credits} credits available
-              </Text>
+              <Text style={styles.balanceText}>You have {credits} credits available</Text>
             </View>
           </View>
         )}
@@ -733,491 +715,121 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0F172A" },
   scrollContent: { padding: 16, paddingBottom: 40 },
-  headerBtn: {
-    backgroundColor: "#334155",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
+  headerBtn: { backgroundColor: "#334155", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   headerBtnText: { color: "#F8FAFC", fontSize: 12, fontWeight: "600" },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  customAlertCard: {
-    backgroundColor: "#1E293B",
-    borderRadius: 20,
-    padding: 24,
-    width: "100%",
-    maxWidth: 340,
-    borderWidth: 1,
-    borderColor: "#334155",
-    alignItems: "center",
-  },
-  alertTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#F8FAFC",
-    marginBottom: 12,
-  },
-  alertMessage: {
-    fontSize: 15,
-    color: "#94A3B8",
-    textAlign: "center",
-    marginBottom: 24,
-    lineHeight: 22,
-  },
-  alertActions: {
-    flexDirection: "row",
-    width: "100%",
-    justifyContent: "flex-end",
-    gap: 16,
-  },
-  alertBtnCancel: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  alertBtnTextCancel: {
-    color: "#6366F1",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  alertBtnConfirm: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  alertBtnTextConfirm: {
-    color: "#6366F1",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-
-  customPickerButton: {
-    backgroundColor: "#0F172A",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#334155",
-    height: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-  },
-  customPickerText: {
-    color: "#F8FAFC",
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  pickerModalContainer: {
-    backgroundColor: "#1E293B",
-    borderRadius: 24,
-    width: "100%",
-    maxHeight: "80%",
-    borderWidth: 1,
-    borderColor: "#334155",
-    overflow: "hidden",
-  },
-  pickerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#334155",
-    backgroundColor: "#0F172A",
-  },
-  pickerTitle: {
-    color: "#F8FAFC",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  pickerCloseText: {
-    color: "#6366F1",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  pickerItem: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#334155",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  pickerItemActive: {
-    backgroundColor: "rgba(99,102,241,0.15)",
-  },
-  pickerItemText: {
-    color: "#CBD5E1",
-    fontSize: 16,
-  },
-  pickerItemTextActive: {
-    color: "#818CF8",
-    fontWeight: "700",
-  },
-  checkmark: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "#6366F1",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  errorBanner: {
-    backgroundColor: "rgba(239,68,68,0.15)",
-    borderColor: "#EF4444",
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-  },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.7)", justifyContent: "center", alignItems: "center", padding: 20 },
+  customAlertCard: { backgroundColor: "#1E293B", borderRadius: 20, padding: 24, width: "100%", maxWidth: 340, borderWidth: 1, borderColor: "#334155", alignItems: "center" },
+  alertTitle: { fontSize: 20, fontWeight: "800", color: "#F8FAFC", marginBottom: 12 },
+  alertMessage: { fontSize: 15, color: "#94A3B8", textAlign: "center", marginBottom: 24, lineHeight: 22 },
+  alertActions: { flexDirection: "row", width: "100%", justifyContent: "flex-end", gap: 16 },
+  alertBtnCancel: { paddingVertical: 10, paddingHorizontal: 12 },
+  alertBtnTextCancel: { color: "#6366F1", fontWeight: "700", fontSize: 14 },
+  alertBtnConfirm: { paddingVertical: 10, paddingHorizontal: 12 },
+  alertBtnTextConfirm: { color: "#6366F1", fontWeight: "700", fontSize: 14 },
+  customPickerButton: { backgroundColor: "#0F172A", borderRadius: 12, borderWidth: 1, borderColor: "#334155", height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16 },
+  customPickerText: { color: "#F8FAFC", fontSize: 15, fontWeight: "500" },
+  pickerModalContainer: { backgroundColor: "#1E293B", borderRadius: 24, width: "100%", maxHeight: "80%", borderWidth: 1, borderColor: "#334155", overflow: "hidden" },
+  pickerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: "#334155", backgroundColor: "#0F172A" },
+  pickerTitle: { color: "#F8FAFC", fontSize: 18, fontWeight: "700" },
+  pickerCloseText: { color: "#6366F1", fontSize: 15, fontWeight: "600" },
+  pickerItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: "#334155", flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  pickerItemActive: { backgroundColor: "rgba(99,102,241,0.15)" },
+  pickerItemText: { color: "#CBD5E1", fontSize: 16 },
+  pickerItemTextActive: { color: "#818CF8", fontWeight: "700" },
+  checkmark: { width: 20, height: 20, borderRadius: 10, backgroundColor: "#6366F1", alignItems: "center", justifyContent: "center" },
+  errorBanner: { backgroundColor: "rgba(239,68,68,0.15)", borderColor: "#EF4444", borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 16 },
   errorText: { color: "#EF4444", textAlign: "center", fontSize: 14 },
-
-  uploadCard: {
-    backgroundColor: "#1E293B",
-    borderRadius: 24,
-    padding: 32,
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#334155",
-    borderStyle: "dashed",
-    marginTop: 20,
-  },
-  uploadIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(99,102,241,0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  uploadTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#F8FAFC",
-    marginBottom: 8,
-  },
-  uploadSubtitle: {
-    fontSize: 15,
-    color: "#94A3B8",
-    textAlign: "center",
-    marginBottom: 24,
-    lineHeight: 22,
-  },
+  uploadCard: { backgroundColor: "#1E293B", borderRadius: 24, padding: 32, alignItems: "center", borderWidth: 2, borderColor: "#334155", borderStyle: "dashed", marginTop: 20 },
+  uploadIconContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(99,102,241,0.1)", justifyContent: "center", alignItems: "center", marginBottom: 16 },
+  uploadTitle: { fontSize: 22, fontWeight: "700", color: "#F8FAFC", marginBottom: 8 },
+  uploadSubtitle: { fontSize: 15, color: "#94A3B8", textAlign: "center", marginBottom: 24, lineHeight: 22 },
   uploadActions: { width: "100%", gap: 12 },
-
-  actionButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    height: 52,
-    borderRadius: 14,
-    paddingHorizontal: 4,
-  },
+  actionButton: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", height: 52, borderRadius: 14, paddingHorizontal: 4 },
   primaryButton: { backgroundColor: "#6366F1" },
   secondaryButton: { backgroundColor: "#334155" },
   accentButton: { backgroundColor: "#8B5CF6" },
   btnText: { color: "#FFF", fontWeight: "600", fontSize: 14, marginLeft: 8 },
   btnIcon: { color: "#FFF" },
-
   workspace: { gap: 24 },
-  card: {
-    backgroundColor: "#1E293B",
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#334155",
-  },
+  card: { backgroundColor: "#1E293B", borderRadius: 20, padding: 20, borderWidth: 1, borderColor: "#334155" },
   cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
-  stepBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#6366F1",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
+  stepBadge: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#6366F1", justifyContent: "center", alignItems: "center", marginRight: 12 },
   stepText: { color: "#FFF", fontWeight: "bold", fontSize: 14 },
   cardTitle: { fontSize: 18, fontWeight: "700", color: "#F8FAFC" },
-
-  previewContainer: {
-    height: 200,
-    borderRadius: 16,
-    overflow: "hidden",
-    marginBottom: 20,
-    position: "relative",
-  },
+  previewContainer: { height: 200, borderRadius: 16, overflow: "hidden", marginBottom: 20, position: "relative" },
   previewImage: { width: "100%", height: "100%" },
-  retakeBtn: {
-    position: "absolute",
-    bottom: 12,
-    right: 12,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
+  retakeBtn: { position: "absolute", bottom: 12, right: 12, backgroundColor: "rgba(0,0,0,0.7)", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   retakeText: { color: "#FFF", fontSize: 12, fontWeight: "600" },
-
   inputContainer: {},
-  inputLabel: {
-    color: "#CBD5E1",
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-
-  segmentedControl: {
-    flexDirection: "row",
-    backgroundColor: "#0F172A",
-    padding: 4,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  segment: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: "center",
-  },
+  inputLabel: { color: "#CBD5E1", fontSize: 14, fontWeight: "600", marginBottom: 8, marginLeft: 4 },
+  segmentedControl: { flexDirection: "row", backgroundColor: "#0F172A", padding: 4, borderRadius: 12, marginBottom: 20 },
+  segment: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center" },
   segmentActive: { backgroundColor: "#334155" },
   segmentText: { color: "#94A3B8", fontWeight: "600" },
   segmentTextActive: { color: "#F8FAFC" },
-
   styleList: { gap: 12 },
-  accordion: {
-    backgroundColor: "#0F172A",
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  accordionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 16,
-    alignItems: "center",
-  },
+  accordion: { backgroundColor: "#0F172A", borderRadius: 12, overflow: "hidden" },
+  accordionHeader: { flexDirection: "row", justifyContent: "space-between", padding: 16, alignItems: "center" },
   accordionTitle: { color: "#F8FAFC", fontWeight: "600", fontSize: 15 },
-  styleGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    padding: 12,
-    gap: 10,
-    paddingTop: 0,
-  },
-  styleChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 100,
-    backgroundColor: "#1E293B",
-    borderWidth: 1,
-    borderColor: "#334155",
-  },
+  styleGrid: { flexDirection: "row", flexWrap: "wrap", padding: 12, gap: 10, paddingTop: 0 },
+  styleChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 100, backgroundColor: "#1E293B", borderWidth: 1, borderColor: "#334155" },
   styleChipActive: { backgroundColor: "#6366F1", borderColor: "#6366F1" },
   styleChipText: { color: "#CBD5E1", fontSize: 13 },
   styleChipTextActive: { color: "#FFF", fontWeight: "700" },
-
   customInputContainer: {},
-  infoBox: {
-    backgroundColor: "rgba(139, 92, 246, 0.1)",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.3)",
-  },
-  infoTitle: { 
-    color: "#C4B5FD", 
-    fontSize: 14, 
-    fontWeight: 'bold', 
-    marginBottom: 4 
-  },
-  infoText: { 
-    color: "#A78BFA", 
-    fontSize: 13 
-  },
-  textArea: {
-    backgroundColor: "#0F172A",
-    borderRadius: 16,
-    padding: 16,
-    color: "#F8FAFC",
-    height: 120,
-    textAlignVertical: "top",
-    borderWidth: 1,
-    borderColor: "#334155",
-  },
-  charCount: {
-    color: "#64748B",
-    fontSize: 12,
-    textAlign: "right",
-    marginTop: 8,
-  },
-
+  infoBox: { backgroundColor: "rgba(139, 92, 246, 0.1)", padding: 12, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: "rgba(139, 92, 246, 0.3)" },
+  infoTitle: { color: "#C4B5FD", fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
+  infoText: { color: "#A78BFA", fontSize: 13 },
+  textArea: { backgroundColor: "#0F172A", borderRadius: 16, padding: 16, color: "#F8FAFC", height: 120, textAlignVertical: "top", borderWidth: 1, borderColor: "#334155" },
+  charCount: { color: "#64748B", fontSize: 12, textAlign: "right", marginTop: 8 },
   generateSection: { marginTop: 12, alignItems: "center" },
-  generateBtn: {
-    width: "100%",
-    backgroundColor: "#6366F1",
-    height: 56,
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#6366F1",
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
+  generateBtn: { width: "100%", backgroundColor: "#6366F1", height: 56, borderRadius: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", shadowColor: "#6366F1", shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
   generateBtnText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
-  creditBadge: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 10,
-  },
+  creditBadge: { backgroundColor: "rgba(255,255,255,0.2)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginLeft: 10 },
   creditBadgeText: { color: "#FFF", fontWeight: "bold", fontSize: 12 },
   balanceText: { color: "#94A3B8", marginTop: 16, fontSize: 14 },
-
   resultContainer: { alignItems: "center", marginTop: 20 },
-  resultHeader: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#F8FAFC",
-    marginBottom: 24,
-  },
+  resultHeader: { fontSize: 28, fontWeight: "800", color: "#F8FAFC", marginBottom: 24 },
   imageComparison: { width: "100%", gap: 20 },
-  imageWrapper: {
-    borderRadius: 20,
-    overflow: "hidden",
-    backgroundColor: "#1E293B",
-    position: "relative",
-  },
+  imageWrapper: { borderRadius: 20, overflow: "hidden", backgroundColor: "#1E293B", position: "relative" },
   resultImg: { width: "100%", aspectRatio: 1 },
-  imageBadge: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 100,
-    zIndex: 10,
-  },
+  imageBadge: { position: "absolute", top: 16, left: 16, backgroundColor: "rgba(0,0,0,0.7)", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 100, zIndex: 10 },
   badgeText: { color: "#FFF", fontSize: 12, fontWeight: "bold" },
-  resultActions: {
-    flexDirection: "row",
-    width: "100%",
-    gap: 12,
-    marginTop: 24,
-  },
-
+  resultActions: { flexDirection: "row", width: "100%", gap: 12, marginTop: 24 },
   cameraOverlay: { flex: 1, justifyContent: "space-between", padding: 20 },
-  cameraCloseBtn: {
-    alignSelf: "flex-end",
-    padding: 10,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 20,
-  },
+  cameraCloseBtn: { alignSelf: "flex-end", padding: 10, backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20 },
   cameraCloseText: { color: "#FFF", fontWeight: "600" },
   cameraBottomBar: { alignItems: "center", marginBottom: 20 },
-  shutterButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 4,
-    borderColor: "#FFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  shutterInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#FFF",
-  },
-
-  watermarkWrapper: {
-    backgroundColor: "#1E293B",
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  imageWrapperNoMargin: {
-    position: "relative",
-  },
-  watermarkFooter: {
-    backgroundColor: "#0F172A",
-    paddingVertical: 10,
-    paddingHorizontal: 5,
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-  },
-  watermarkText: {
-    color: "#94A3B8",
-    fontSize: 10,
-    fontWeight: "500",
-    textAlign: "center",
-  },
-
-  upsellButton: {
-    marginTop: 16,
-    backgroundColor: "rgba(99, 102, 241, 0.15)",
-    borderWidth: 1,
-    borderColor: "#6366F1",
-    paddingVertical: 14,
-    borderRadius: 14,
-    width: "100%",
-    alignItems: "center",
-  },
-  upsellButtonText: {
-    color: "#818CF8",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  homeSaleIndicator: {
-    backgroundColor: "rgba(99, 102, 241, 0.15)",
-    borderWidth: 1,
-    borderColor: "#6366F1",
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  homeSaleTextContainer: {
-    flex: 1,
-  },
-  homeSaleTitle: {
-    color: "#818CF8",
-    fontWeight: "900",
-    fontSize: 15,
-  },
-  homeSaleSubtitle: {
-    color: "#94A3B8",
-    fontSize: 12,
-    marginTop: 2,
-  },
-  homeSaleButton: {
-    backgroundColor: "#6366F1",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    marginLeft: 12,
-  },
-  homeSaleButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 12,
-  },
+  shutterButton: { width: 72, height: 72, borderRadius: 36, borderWidth: 4, borderColor: "#FFF", alignItems: "center", justifyContent: "center" },
+  shutterInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: "#FFF" },
+  watermarkWrapper: { backgroundColor: "#1E293B", borderRadius: 20, overflow: "hidden" },
+  imageWrapperNoMargin: { position: "relative" },
+  watermarkFooter: { backgroundColor: "#0F172A", paddingVertical: 10, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", width: "100%" },
+  watermarkText: { color: "#94A3B8", fontSize: 10, fontWeight: "500", textAlign: "center" },
+  upsellButton: { marginTop: 16, backgroundColor: "rgba(99, 102, 241, 0.15)", borderWidth: 1, borderColor: "#6366F1", paddingVertical: 14, borderRadius: 14, width: "100%", alignItems: "center" },
+  upsellButtonText: { color: "#818CF8", fontWeight: "700", fontSize: 15 },
+  homeSaleIndicator: { backgroundColor: "rgba(99, 102, 241, 0.15)", borderWidth: 1, borderColor: "#6366F1", borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  homeSaleTextContainer: { flex: 1 },
+  homeSaleTitle: { color: "#818CF8", fontWeight: "900", fontSize: 15 },
+  homeSaleSubtitle: { color: "#94A3B8", fontSize: 12, marginTop: 2 },
+  homeSaleButton: { backgroundColor: "#6366F1", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, marginLeft: 12 },
+  homeSaleButtonText: { color: "white", fontWeight: "bold", fontSize: 12 },
+  
+  // Guide and History specific styles
+  infoSection: { marginTop: 32, backgroundColor: "#1E293B", borderRadius: 20, padding: 20, borderWidth: 1, borderColor: "#334155" },
+  infoHeading: { fontSize: 18, fontWeight: "800", color: "#F8FAFC", marginBottom: 16 },
+  benefitRow: { flexDirection: "row", marginBottom: 12 },
+  benefitText: { color: "#94A3B8", fontSize: 14, lineHeight: 20 },
+  boldText: { color: "#F8FAFC", fontWeight: "700" },
+  stepRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
+  stepNumber: { width: 24, height: 24, borderRadius: 12, backgroundColor: "#6366F1", justifyContent: "center", alignItems: "center", marginRight: 12 },
+  stepNumberText: { color: "#FFF", fontSize: 12, fontWeight: "bold" },
+  stepText: { color: "#94A3B8", fontSize: 14 },
+  historyContainer: { marginBottom: 24 },
+  historyScroll: { flexDirection: "row" },
+  historyCard: { width: 140, marginRight: 12, backgroundColor: "#1E293B", borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: "#334155" },
+  historyImage: { width: "100%", height: 100 },
+  historyLabel: { padding: 8, fontSize: 10, color: "#94A3B8", textAlign: "center" },
 });
 
 export default HomeScreen;
