@@ -1,12 +1,5 @@
-// services/geminiService.ts
 import { supabase } from "../lib/supabase";
-
-// REPLACE THIS WITH YOUR ACTUAL DEPLOYED BACKEND URL (e.g. Cloud Run URL)
-// Do not use 'localhost' here because your phone cannot see your computer's localhost.
-
-// ✅ CORRECT (Use YOUR specific URL)
-const BACKEND_URL =
-  "https://ai-decorator-backend-358218923651.asia-south1.run.app";
+import { BACKEND_URL } from "@env"; 
 
 export const decorateRoom = async (
   imageUri: string,
@@ -22,7 +15,7 @@ export const decorateRoom = async (
 
     if (!token) throw new Error("User not authenticated");
 
-    // 2. Create FormData for file upload (Match Backend Expectation)
+    // 2. Create FormData for file upload
     const formData = new FormData();
 
     // Append the image file
@@ -33,20 +26,16 @@ export const decorateRoom = async (
       type: "image/jpeg",
     } as any);
 
-    // Append text fields (Match keys expected by server.js)
+    // Append text fields
     formData.append("designPrompt", stylePrompt);
     formData.append("roomType", roomType || "Room");
-    // Native app currently only does 'style' mode based on your UI,
-    // but we pass it to match backend logic.
     formData.append("designMode", "style");
     formData.append("roomDescription", roomType || "");
 
-    // 3. Call Backend
+    // 3. Call Backend using the imported BACKEND_URL
     const response = await fetch(`${BACKEND_URL}/api/decorate`, {
       method: "POST",
       headers: {
-        // Do NOT set Content-Type to multipart/form-data manually;
-        // fetch handles the boundary automatically.
         Authorization: `Bearer ${token}`,
       },
       body: formData,

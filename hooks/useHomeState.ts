@@ -1,12 +1,13 @@
 // hooks/useHomeState.ts
 import { useState, useCallback } from "react";
-import { useAuth } from "../context/AuthContext"; //
-import { getUserProfile, getUserDesigns, saveUserDesign } from "../services/userService"; //
-import * as geminiService from "../services/geminiService"; //
+import { useAuth } from "../context/AuthContext";
+import { getUserProfile, getUserDesigns, saveUserDesign } from "../services/userService";
+import * as geminiService from "../services/geminiService";
 import { Alert } from "react-native";
+import * as ImageManipulator from 'expo-image-manipulator';
 
 export const useHomeState = (navigation: any) => {
-  const { session, logout } = useAuth(); //
+  const { session, logout } = useAuth();
   
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
@@ -17,10 +18,10 @@ export const useHomeState = (navigation: any) => {
   const fetchUserData = useCallback(async () => {
     if (!session?.user) return;
     try {
-      const profile = await getUserProfile(session.user.id); //
+      const profile = await getUserProfile(session.user.id);
       if (profile) setCredits(profile.generation_credits);
 
-      const designs = await getUserDesigns(5); //
+      const designs = await getUserDesigns(5);
       if (designs) setHistory(designs);
     } catch (err) {
       console.log("Error fetching user data:", err);
@@ -45,12 +46,19 @@ export const useHomeState = (navigation: any) => {
 
     setIsLoading(true);
     try {
-      // 2. Prepare the AI Prompt: Combine the selected style and user instructions
+      // 2. Image Compression: Fix for crashes by resizing raw mobile photos before upload
+      const manipulatedImage = await ImageManipulator.manipulateAsync(
+        sourceImageUrl,
+        [{ resize: { width: 1200 } }], // Resizes to a stable width for the AI model
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      // 3. Prepare the AI Prompt: Combine the selected style and user instructions
       const fullPrompt = `${styleName} style. ${prompt}`.trim();
       
-      // 3. Generate Design: Call the backend service
+      // 4. Generate Design: Call the backend service with the optimized image URI
       const resultImageUrl = await geminiService.decorateRoom(
-        sourceImageUrl,
+        manipulatedImage.uri, 
         fullPrompt,
         roomType
       );
@@ -58,7 +66,7 @@ export const useHomeState = (navigation: any) => {
       if (resultImageUrl) {
         setGeneratedImageUrl(resultImageUrl);
         
-        // 4. Save to Database: The service also manages the 2-image history limit
+        // 5. Save to Database: The service also manages the 2-image history limit
         const designData = {
           user_id: session.user.id,
           source_url: sourceImageUrl,
@@ -67,9 +75,9 @@ export const useHomeState = (navigation: any) => {
           design_style: styleName,
         };
 
-        await saveUserDesign(designData, session.user.id); //
+        await saveUserDesign(designData, session.user.id);
         
-        // 5. Sync State: Refresh the UI with updated credits and history
+        // 6. Sync State: Refresh the UI with updated credits and history
         await fetchUserData();
       }
     } catch (err: any) {
