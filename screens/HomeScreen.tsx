@@ -245,49 +245,6 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
   );
 };
 
-const INSPIRATION_IMAGES = [
-  {
-    id: "1",
-    image: require("../assets/images/inspiration/living-room.jpg"),
-    label: "Living Room",
-  },
-  {
-    id: "2",
-    image: require("../assets/images/inspiration/bedroom.jpg"),
-    label: "Bedroom",
-  },
-  {
-    id: "3",
-    image: require("../assets/images/inspiration/kitchen.jpg"),
-    label: "Kitchen",
-  },
-  {
-    id: "4",
-    image: require("../assets/images/inspiration/bathroom.jpg"),
-    label: "Bathroom",
-  },
-];
-
-const InspirationGallery: React.FC = () => {
-  return (
-    <View style={styles.gallerySection}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Get Inspired</Text>
-        <Text style={styles.sectionSubtitle}>See what's possible</Text>
-      </View>
-      <View style={styles.galleryGrid}>
-        {INSPIRATION_IMAGES.map((item) => (
-          <View key={item.id} style={styles.galleryCard}>
-            <Image source={item.image} style={styles.galleryImg} />
-            <View style={styles.galleryOverlay}>
-              <Text style={styles.galleryLabel}>{item.label}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-};
 
 const GeneratedImageDisplay: React.FC<{
   sourceImage: string;
@@ -412,7 +369,6 @@ const GeneratedImageDisplay: React.FC<{
         </TouchableOpacity>
       </View>
 
-      {/* NEW: Upsell Button right where the user sees the watermark */}
       <TouchableOpacity 
         style={styles.upsellButton} 
         onPress={() => {
@@ -594,10 +550,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         )}
 
         {!sourceImageUrl ? (
-          <>
-            <ImageUploader onImageSelected={handleImageSelect} />
-            <InspirationGallery />
-          </>
+          <ImageUploader onImageSelected={handleImageSelect} />
         ) : (
           <View style={styles.workspace}>
             <TouchableOpacity
@@ -731,7 +684,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 </View>
               ) : (
                 <View style={styles.customInputContainer}>
-                  {/* UX FIX: Better copy for custom prompts to justify 3 credits */}
                   <View style={styles.infoBox}>
                     <Text style={styles.infoTitle}>🌟 Advanced Custom Design</Text>
                     <Text style={styles.infoText}>
@@ -975,33 +927,6 @@ const styles = StyleSheet.create({
   btnText: { color: "#FFF", fontWeight: "600", fontSize: 14, marginLeft: 8 },
   btnIcon: { color: "#FFF" },
 
-  gallerySection: { marginTop: 40 },
-  sectionHeader: { marginBottom: 20 },
-  sectionTitle: { fontSize: 20, fontWeight: "700", color: "#F8FAFC" },
-  sectionSubtitle: { fontSize: 14, color: "#94A3B8", marginTop: 2 },
-  galleryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  galleryCard: {
-    width: "48%",
-    aspectRatio: 1,
-    borderRadius: 16,
-    overflow: "hidden",
-    backgroundColor: "#1E293B",
-  },
-  galleryImg: { width: "100%", height: "100%" },
-  galleryOverlay: {
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    padding: 8,
-    backgroundColor: "rgba(0,0,0,0.6)",
-  },
-  galleryLabel: {
-    color: "#FFF",
-    fontSize: 13,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-
   workspace: { gap: 24 },
   card: {
     backgroundColor: "#1E293B",
@@ -1150,11 +1075,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
   },
-  generateBtnDisabled: {
-    backgroundColor: "#334155",
-    shadowOpacity: 0,
-    elevation: 0,
-  },
   generateBtnText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
   creditBadge: {
     backgroundColor: "rgba(255,255,255,0.2)",
@@ -1225,7 +1145,6 @@ const styles = StyleSheet.create({
   },
 
   watermarkWrapper: {
-    
     backgroundColor: "#1E293B",
     borderRadius: 20,
     overflow: "hidden",
@@ -1263,7 +1182,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 15,
   },
-  /* --- NEW: HOME SCREEN SALE INDICATOR STYLES --- */
   homeSaleIndicator: {
     backgroundColor: "rgba(99, 102, 241, 0.15)",
     borderWidth: 1,
