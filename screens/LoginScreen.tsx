@@ -161,17 +161,17 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </View>
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.buttonText}>Sign In</Text>
-              )}
-            </TouchableOpacity>
+  style={[styles.button, loading && styles.buttonDisabled]}
+  onPress={handleLogin}
+  disabled={loading}
+  activeOpacity={0.8}
+>
+  {loading ? (
+    <ActivityIndicator color="#FFFFFF" />
+  ) : (
+    <Text style={styles.buttonText}>Start Decorating</Text>
+  )}
+</TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => navigation.navigate("SignUp")}

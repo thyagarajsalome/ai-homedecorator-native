@@ -4,9 +4,9 @@ import { View, Text, StyleSheet } from 'react-native';
 export const InfoGuide = () => (
   <View style={styles.container}>
     <Text style={styles.title}>How it works</Text>
-    <Text style={styles.text}>1. Upload a clear photo of your room.</Text>
-    <Text style={styles.text}>2. Select the room type and preferred style.</Text>
-    <Text style={styles.text}>3. Our AI will redesign your space instantly!</Text>
+    <Text style={styles.text}>Step 1: Snap or Upload a Room Photo</Text>
+    <Text style={styles.text}>Step 2: Choose Your Room Type & Style</Text>
+    <Text style={styles.text}>Step 3: Magic! See Your AI Redesign</Text>
   </View>
 );
 
