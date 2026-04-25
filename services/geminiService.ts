@@ -1,5 +1,8 @@
+// services/geminiService.ts
 import { supabase } from "../lib/supabase";
-import { BACKEND_URL } from "@env"; 
+
+// Hardcoded production backend URL to ensure stability across builds
+const BACKEND_URL = "https://ai-decorator-backend-358218923651.asia-south1.run.app";
 
 export const decorateRoom = async (
   imageUri: string,
@@ -7,7 +10,7 @@ export const decorateRoom = async (
   roomType?: string
 ): Promise<string> => {
   try {
-    // 1. Get the current User Token
+    // 1. Get the current User Token from Supabase
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -18,24 +21,24 @@ export const decorateRoom = async (
     // 2. Create FormData for file upload
     const formData = new FormData();
 
-    // Append the image file
-    // React Native expects an object with uri, name, and type for files
+    // Append the image file with required React Native metadata
     formData.append("image", {
       uri: imageUri,
       name: "upload.jpg",
       type: "image/jpeg",
     } as any);
 
-    // Append text fields
+    // Append design configuration fields
     formData.append("designPrompt", stylePrompt);
     formData.append("roomType", roomType || "Room");
     formData.append("designMode", "style");
     formData.append("roomDescription", roomType || "");
 
-    // 3. Call Backend using the imported BACKEND_URL
+    // 3. Call the Production Backend
     const response = await fetch(`${BACKEND_URL}/api/decorate`, {
       method: "POST",
       headers: {
+        // Fetch automatically handles boundary for multipart/form-data
         Authorization: `Bearer ${token}`,
       },
       body: formData,
