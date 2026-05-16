@@ -6,7 +6,7 @@ import { supabase } from "../lib/supabase";
 
 // ✅ CORRECT (Use YOUR specific URL)
 const BACKEND_URL =
-  "https://ai-decorator-backend-358218923651.asia-south1.run.app";
+  "https://ai-decorator-backend-358218923651.us-central1.run.app";
 
 export const decorateRoom = async (
   imageUri: string,

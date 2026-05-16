@@ -7,6 +7,7 @@ const API_KEYS = {
 };
 
 export const initPurchases = async () => {
+  if (Platform.OS === 'web') return;
   try {
     if (Platform.OS === "android") {
       await Purchases.configure({ apiKey: API_KEYS.google });
@@ -20,6 +21,7 @@ export const initPurchases = async () => {
 
 // 👇 ADD THIS FUNCTION
 export const identifyUser = async (userId: string) => {
+  if (Platform.OS === 'web') return;
   try {
     // This links the RevenueCat user to your Supabase User ID
     await Purchases.logIn(userId);
@@ -30,6 +32,7 @@ export const identifyUser = async (userId: string) => {
 
 // 👇 ADD THIS FUNCTION
 export const logoutUser = async () => {
+  if (Platform.OS === 'web') return;
   try {
     await Purchases.logOut();
   } catch (e) {
@@ -38,6 +41,49 @@ export const logoutUser = async () => {
 };
 
 export const getPackages = async (): Promise<PurchasesPackage[]> => {
+  if (Platform.OS === 'web') {
+    return [
+      {
+        identifier: "starter_pack",
+        packageType: "CUSTOM",
+        product: {
+          identifier: "starter",
+          description: "10 High-Res Generations",
+          title: "Starter Pack (10 Credits)",
+          price: 4.99,
+          priceString: "$4.99",
+          currencyCode: "USD",
+          introPrice: null
+        }
+      },
+      {
+        identifier: "pro_pack",
+        packageType: "CUSTOM",
+        product: {
+          identifier: "pro",
+          description: "50 High-Res Generations + Priority",
+          title: "Pro Pack (50 Credits)",
+          price: 14.99,
+          priceString: "$14.99",
+          currencyCode: "USD",
+          introPrice: null
+        }
+      },
+      {
+        identifier: "ultimate_pack",
+        packageType: "CUSTOM",
+        product: {
+          identifier: "ultimate",
+          description: "Unlimited potential with 200 Generations",
+          title: "Ultimate Pack (200 Credits)",
+          price: 39.99,
+          priceString: "$39.99",
+          currencyCode: "USD",
+          introPrice: null
+        }
+      }
+    ] as any;
+  }
   // ... (keep existing code)
   try {
     const offerings = await Purchases.getOfferings();
@@ -54,6 +100,10 @@ export const getPackages = async (): Promise<PurchasesPackage[]> => {
 };
 
 export const purchasePackage = async (pack: PurchasesPackage) => {
+  if (Platform.OS === 'web') {
+    Alert.alert("Not Supported", "In-app purchases are not supported on the web version.");
+    return null;
+  }
   // ... (keep existing code)
   try {
     const { customerInfo } = await Purchases.purchasePackage(pack);

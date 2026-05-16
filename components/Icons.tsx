@@ -11,6 +11,7 @@ import Svg, {
 // Note: className is replaced with a style prop
 type IconProps = {
   style?: StyleProp<ViewStyle>;
+  color?: string;
   // for icons that change based on state, like the chevron
   active?: boolean;
 };
@@ -40,11 +41,13 @@ export const LogoIcon: React.FC<IconProps> = ({ style }) => (
 
 export const AccordionChevronIcon: React.FC<IconProps> = ({
   style,
+  color,
   active,
 }) => (
   <Svg
     viewBox="0 0 20 20"
     fill="currentColor"
+    color={color}
     style={[
       { width: 20, height: 20 },
       style,
@@ -59,10 +62,11 @@ export const AccordionChevronIcon: React.FC<IconProps> = ({
   </Svg>
 );
 
-export const DecorateIcon: React.FC<IconProps> = ({ style }) => (
+export const DecorateIcon: React.FC<IconProps> = ({ style, color }) => (
   <Svg
     viewBox="0 0 20 20"
     fill="currentColor"
+    color={color}
     style={[{ width: 20, height: 20 }, style]}
   >
     <Path d="M10 3.5a1.5 1.5 0 011.06.44l3.536 3.535a1.5 1.5 0 010 2.122L11.06 13.13a1.5 1.5 0 01-2.122 0L5.404 9.596a1.5 1.5 0 010-2.122L8.94 3.94A1.5 1.5 0 0110 3.5zM8.94 5.05L5.404 8.586a.5.5 0 000 .707l3.535 3.536a.5.5 0 00.707 0l3.536-3.536a.5.5 0 000-.707L8.94 5.05zM15.95 10.45a1 1 0 01-1.414 1.414l-2.02-2.02a1 1 0 111.414-1.414l2.02 2.02zM6.485 13.515a1 1 0 01-1.414 1.414L3.05 12.91a1 1 0 111.414-1.414l2.021 2.019z" />
@@ -70,20 +74,22 @@ export const DecorateIcon: React.FC<IconProps> = ({ style }) => (
   </Svg>
 );
 
-export const UploadIcon: React.FC<IconProps> = ({ style }) => (
+export const UploadIcon: React.FC<IconProps> = ({ style, color }) => (
   <Svg
     viewBox="0 0 24 24"
     fill="currentColor"
+    color={color}
     style={[{ width: 24, height: 24 }, style]}
   >
     <Path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" />
   </Svg>
 );
 
-export const CameraIcon: React.FC<IconProps> = ({ style }) => (
+export const CameraIcon: React.FC<IconProps> = ({ style, color }) => (
   <Svg
     viewBox="0 0 24 24"
     fill="currentColor"
+    color={color}
     style={[{ width: 24, height: 24 }, style]}
   >
     <Circle cx="12" cy="12" r="3.2" />
@@ -91,30 +97,33 @@ export const CameraIcon: React.FC<IconProps> = ({ style }) => (
   </Svg>
 );
 
-export const DownloadIcon: React.FC<IconProps> = ({ style }) => (
+export const DownloadIcon: React.FC<IconProps> = ({ style, color }) => (
   <Svg
     viewBox="0 0 24 24"
     fill="currentColor"
+    color={color}
     style={[{ width: 24, height: 24 }, style]}
   >
     <Path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
   </Svg>
 );
 
-export const ShareIcon: React.FC<IconProps> = ({ style }) => (
+export const ShareIcon: React.FC<IconProps> = ({ style, color }) => (
   <Svg
     viewBox="0 0 24 24"
     fill="currentColor"
+    color={color}
     style={[{ width: 24, height: 24 }, style]}
   >
     <Path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 8.81C7.5 8.31 6.79 8 6 8c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3s3-1.34 3-3-1.34-3-3-3z" />
   </Svg>
 );
 
-export const ResetIcon: React.FC<IconProps> = ({ style }) => (
+export const ResetIcon: React.FC<IconProps> = ({ style, color }) => (
   <Svg
     viewBox="0 0 24 24"
     fill="currentColor"
+    color={color}
     style={[{ width: 24, height: 24 }, style]}
   >
     <Path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" />
