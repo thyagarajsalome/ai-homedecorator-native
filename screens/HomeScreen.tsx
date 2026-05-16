@@ -10,6 +10,7 @@ import {
   TextInput,
   Modal,
   FlatList,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -36,6 +37,8 @@ import { CameraView, Camera } from "expo-camera";
 
 import ViewShot, { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 
 // --- 1. Custom Alert Modal ---
 const CustomAlertModal: React.FC<{
@@ -80,7 +83,7 @@ const RoomTypePicker: React.FC<{
         <Text style={[styles.customPickerText, !value && { color: "#94A3B8" }]}>
           {value || "Select Room Type..."}
         </Text>
-        <AccordionChevronIcon style={{ color: "#94A3B8" }} />
+        <AccordionChevronIcon color="#94A3B8" />
       </TouchableOpacity>
 
       <Modal transparent visible={modalVisible} animationType="slide">
@@ -218,7 +221,7 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
         onPictureTaken={onPictureTaken}
       />
       <View style={styles.uploadIconContainer}>
-        <UploadIcon style={{ width: 40, height: 40, color: "#818CF8" }} />
+        <UploadIcon style={{ width: 40, height: 40 }} color="#818CF8" />
       </View>
       <Text style={styles.uploadTitle}>Start Your Design</Text>
       <Text style={styles.uploadSubtitle}>
@@ -230,14 +233,14 @@ const ImageUploader: React.FC<{ onImageSelected: (uri: string) => void }> = ({
           onPress={openImageGallery}
           style={[styles.actionButton, styles.primaryButton]}
         >
-          <UploadIcon style={styles.btnIcon} />
+          <UploadIcon color="#FFF" />
           <Text style={styles.btnText}>Upload Photo</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={openCamera}
           style={[styles.actionButton, styles.secondaryButton]}
         >
-          <CameraIcon style={styles.btnIcon} />
+          <CameraIcon color="#FFF" />
           <Text style={styles.btnText}>Use Camera</Text>
         </TouchableOpacity>
       </View>
@@ -293,9 +296,25 @@ const GeneratedImageDisplay: React.FC<{
   sourceImage: string;
   generatedImage: string;
   onReset: () => void;
-}> = ({ sourceImage, generatedImage, onReset }) => {
+  onRemoveWatermark?: () => Promise<boolean>;
+}> = ({ sourceImage, generatedImage, onReset, onRemoveWatermark }) => {
   const viewShotRef = useRef<any>(null);
   const [isSharing, setIsSharing] = useState(false);
+  const [isWatermarkRemoved, setIsWatermarkRemoved] = useState(false);
+  const [isRemovingWatermark, setIsRemovingWatermark] = useState(false);
+
+  const handleRemoveWatermark = async () => {
+    if (!onRemoveWatermark) return;
+    setIsRemovingWatermark(true);
+    try {
+      const success = await onRemoveWatermark();
+      if (success) {
+        setIsWatermarkRemoved(true);
+      }
+    } finally {
+      setIsRemovingWatermark(false);
+    }
+  };
 
   const captureWatermarkedImage = async () => {
     try {
@@ -338,68 +357,85 @@ const GeneratedImageDisplay: React.FC<{
     try {
       const uri = await captureWatermarkedImage();
       if (uri) {
-        if (!(await Sharing.isAvailableAsync())) {
-          Alert.alert("Error", "Sharing is not available on this device");
-          return;
+        if (Platform.OS === 'web') {
+          if (navigator.share) {
+            await navigator.share({
+              title: "Share your dream room",
+              text: "Check out this amazing room I designed with AI! 🚀✨\n\nDesign your own dream home in seconds. Download Ai Home Decorator now:\nhttps://play.google.com/store/apps/details?id=com.aihomedecorator.twa\n\n#AIHomeDecorator #InteriorDesign #RoomMakeover",
+              url: uri,
+            }).catch((err) => {
+              if (err.name !== 'AbortError') console.error("Web Share error:", err);
+            });
+          } else {
+            Alert.alert("Share", "Sharing is not supported on this browser. You can save the image instead.");
+          }
+        } else {
+          const RNShare = require('react-native-share').default;
+          const shareOptions = {
+            title: "Share your dream room",
+            message: "Check out this amazing room I designed with AI! 🚀✨\n\nDesign your own dream home in seconds. Download Ai Home Decorator now:\nhttps://play.google.com/store/apps/details?id=com.aihomedecorator.twa\n\n#AIHomeDecorator #InteriorDesign #RoomMakeover",
+            url: uri,
+            type: "image/jpeg",
+          };
+          await RNShare.open(shareOptions);
         }
-        await Sharing.shareAsync(uri, {
-          mimeType: "image/jpeg",
-          dialogTitle: "Share your dream room",
-          UTI: "public.jpeg",
-        });
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message);
+      if (error.message !== "User did not share") {
+        console.error("Share error:", error);
+      }
     } finally {
       setIsSharing(false);
     }
   };
 
   return (
-    <View style={styles.resultContainer}>
+    <Animated.View entering={FadeInDown.duration(600).springify()} style={styles.resultContainer}>
       <Text style={styles.resultHeader}>Your New Space</Text>
 
-      <View style={styles.imageComparison}>
-        <View style={styles.imageWrapper}>
-          <View style={styles.imageBadge}>
-            <Text style={styles.badgeText}>Original</Text>
+      <ViewShot
+        ref={viewShotRef}
+        style={styles.watermarkWrapper}
+        options={{ format: "jpg", quality: 0.9 }}
+      >
+        <View style={[styles.imageComparison, { padding: 10 }]}>
+          <View style={styles.imageWrapper}>
+            <View style={styles.imageBadge}>
+              <Text style={styles.badgeText}>Original</Text>
+            </View>
+            <Image source={{ uri: sourceImage }} style={styles.resultImg} />
           </View>
-          <Image source={{ uri: sourceImage }} style={styles.resultImg} />
-        </View>
 
-        <ViewShot
-          ref={viewShotRef}
-          style={styles.watermarkWrapper}
-          options={{ format: "jpg", quality: 0.9 }}
-        >
           <View style={styles.imageWrapperNoMargin}>
             <View style={[styles.imageBadge, { backgroundColor: "#6366F1" }]}>
               <Text style={styles.badgeText}>AI Design</Text>
             </View>
             <Image source={{ uri: generatedImage }} style={styles.resultImg} />
           </View>
+        </View>
 
+        {!isWatermarkRemoved && (
           <View style={styles.watermarkFooter}>
             <Text style={styles.watermarkText}>
-              This image is decorated by Ai Home Decorator (aihomedecorator.com)
+              Transform your room at aihomedecorator.com (Get the app!)
             </Text>
           </View>
-        </ViewShot>
-      </View>
+        )}
+      </ViewShot>
 
       <View style={styles.resultActions}>
         <TouchableOpacity
           onPress={onReset}
           style={[styles.actionButton, styles.secondaryButton]}
         >
-          <ResetIcon style={styles.btnIcon} />
+          <ResetIcon color="#FFF" />
           <Text style={styles.btnText}>Start Over</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleDownload}
           style={[styles.actionButton, styles.primaryButton]}
         >
-          <DownloadIcon style={styles.btnIcon} />
+          <DownloadIcon color="#FFF" />
           <Text style={styles.btnText}>Save</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -407,24 +443,32 @@ const GeneratedImageDisplay: React.FC<{
           style={[styles.actionButton, styles.accentButton]}
           disabled={isSharing}
         >
-          <ShareIcon style={styles.btnIcon} />
+          <ShareIcon color="#FFF" />
           <Text style={styles.btnText}>{isSharing ? "..." : "Share"}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* NEW: Upsell Button right where the user sees the watermark */}
-      <TouchableOpacity 
-        style={styles.upsellButton} 
-        onPress={() => {
-          Alert.alert(
-            "Premium Feature", 
-            "Removing the watermark costs 1 credit. (Implementation pending for backend un-watermarked request)"
-          );
-        }}
-      >
-        <Text style={styles.upsellButtonText}>✨ Remove Watermark & Save HD (1 Credit)</Text>
-      </TouchableOpacity>
-    </View>
+      {/* Upsell Button right where the user sees the watermark */}
+      {!isWatermarkRemoved && (
+        <TouchableOpacity 
+          style={styles.upsellButton} 
+          onPress={handleRemoveWatermark}
+          disabled={isRemovingWatermark}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={["rgba(99, 102, 241, 0.2)", "rgba(217, 70, 239, 0.2)"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ width: "100%", paddingVertical: 14, alignItems: "center", borderRadius: 14 }}
+          >
+            <Text style={styles.upsellButtonText}>
+              {isRemovingWatermark ? "Processing..." : "✨ Remove Watermark & Save HD (1 Credit)"}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+    </Animated.View>
   );
 };
 
@@ -456,10 +500,60 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         try {
           const { data } = await supabase
             .from("user_profiles")
-            .select("generation_credits")
+            .select("generation_credits, last_login_date, daily_streak")
             .eq("id", session.user.id)
             .single();
-          if (data && isActive) setCredits(data.generation_credits);
+          if (data && isActive) {
+            let currentCredits = data.generation_credits;
+            
+            // Daily Streak Logic
+            const today = new Date();
+            const lastLogin = data.last_login_date ? new Date(data.last_login_date) : null;
+            
+            let isNewDay = false;
+            let newStreak = data.daily_streak || 0;
+            
+            if (!lastLogin) {
+              isNewDay = true;
+              newStreak = 1;
+            } else {
+              // Check if it's a new calendar day
+              const isDifferentDay = today.getDate() !== lastLogin.getDate() || 
+                                     today.getMonth() !== lastLogin.getMonth() || 
+                                     today.getFullYear() !== lastLogin.getFullYear();
+              
+              const diffTime = Math.abs(today.getTime() - lastLogin.getTime());
+              const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+              
+              if (isDifferentDay) {
+                isNewDay = true;
+                if (diffDays <= 1) {
+                  newStreak += 1;
+                } else {
+                  newStreak = 1; // reset streak
+                }
+              }
+            }
+            
+            if (isNewDay) {
+              currentCredits += 1; // Reward 1 free credit daily
+              await supabase
+                .from("user_profiles")
+                .update({ 
+                  generation_credits: currentCredits,
+                  last_login_date: today.toISOString(),
+                  daily_streak: newStreak
+                })
+                .eq("id", session.user.id);
+                
+              Alert.alert(
+                "Daily Reward! 🎁", 
+                `You received 1 free credit for visiting today! Current Streak: ${newStreak} 🔥`
+              );
+            }
+            
+            setCredits(currentCredits);
+          }
         } catch (err) {
           console.log("Error fetching credits:", err);
         }
@@ -548,6 +642,46 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   };
 
+  const handleRemoveWatermark = async (): Promise<boolean> => {
+    if (credits < 1) {
+      setIsCreditAlertVisible(true);
+      return false;
+    }
+    
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("generation_credits")
+        .eq("id", session?.user?.id)
+        .single();
+        
+      if (error) throw error;
+      
+      if (data.generation_credits < 1) {
+          setIsCreditAlertVisible(true);
+          return false;
+      }
+      
+      const { error: updateError } = await supabase
+        .from("user_profiles")
+        .update({ generation_credits: data.generation_credits - 1 })
+        .eq("id", session?.user?.id);
+        
+      if (updateError) throw updateError;
+      
+      setCredits(data.generation_credits - 1);
+      Alert.alert("Success", "Watermark removed! You can now save or share the high-res image.");
+      return true;
+    } catch (err: any) {
+      console.error("Remove watermark error:", err);
+      Alert.alert("Error", "Failed to remove watermark. Please try again.");
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (isLoading) return <Loader />;
   if (generatedImageUrl && sourceImageUrl) {
     return (
@@ -555,12 +689,17 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         style={styles.container}
         edges={["bottom", "left", "right"]}
       >
-        <Header />
+        <Header>
+          <TouchableOpacity onPress={() => navigation.navigate("Referral")} style={[styles.headerBtn, { backgroundColor: '#6366F1' }]}>
+            <Text style={styles.headerBtnText}>🎁 Free Credits</Text>
+          </TouchableOpacity>
+        </Header>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <GeneratedImageDisplay
             sourceImage={sourceImageUrl}
             generatedImage={generatedImageUrl}
             onReset={resetState}
+            onRemoveWatermark={handleRemoveWatermark}
           />
         </ScrollView>
       </SafeAreaView>
@@ -582,9 +721,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       />
 
       <Header>
-        <TouchableOpacity onPress={logout} style={styles.headerBtn}>
-          <Text style={styles.headerBtnText}>Log Out</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity onPress={() => navigation.navigate("Referral")} style={[styles.headerBtn, { backgroundColor: '#6366F1' }]}>
+            <Text style={styles.headerBtnText}>🎁 Free Credits</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} style={styles.headerBtn}>
+            <Text style={styles.headerBtnText}>Log Out</Text>
+          </TouchableOpacity>
+        </View>
       </Header>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {error && (
@@ -696,7 +840,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                       >
                         <Text style={styles.accordionTitle}>{cat.name}</Text>
                         <AccordionChevronIcon
-                          style={{ color: "#94A3B8" }}
+                          color="#94A3B8"
                           active={activeAccordion === cat.name}
                         />
                       </TouchableOpacity>
@@ -756,16 +900,24 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
             <View style={styles.generateSection}>
               <TouchableOpacity
-                style={styles.generateBtn}
+                style={[styles.generateBtn, credits < (decorMode === "style" ? 1 : 3) && styles.generateBtnDisabled]}
                 onPress={handleDecorate}
+                activeOpacity={0.8}
               >
-                <DecorateIcon style={{ color: "white", marginRight: 8 }} />
-                <Text style={styles.generateBtnText}>Generate Design</Text>
-                <View style={styles.creditBadge}>
-                  <Text style={styles.creditBadgeText}>
-                    {decorMode === "style" ? 1 : 3}
-                  </Text>
-                </View>
+                <LinearGradient
+                  colors={["#6366F1", "#D946EF"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.generateBtnInner}
+                >
+                  <DecorateIcon style={{ marginRight: 8 }} color="white" />
+                  <Text style={styles.generateBtnText}>Generate Design</Text>
+                  <View style={styles.creditBadge}>
+                    <Text style={styles.creditBadgeText}>
+                      {decorMode === "style" ? 1 : 3}
+                    </Text>
+                  </View>
+                </LinearGradient>
               </TouchableOpacity>
               <Text style={styles.balanceText}>
                 You have {credits} credits available
@@ -779,7 +931,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0F172A" },
+  container: { flex: 1, backgroundColor: "#050505" }, // AMOLED Black
   scrollContent: { padding: 16, paddingBottom: 40 },
   headerBtn: {
     backgroundColor: "#334155",
@@ -927,14 +1079,19 @@ const styles = StyleSheet.create({
   errorText: { color: "#EF4444", textAlign: "center", fontSize: 14 },
 
   uploadCard: {
-    backgroundColor: "#1E293B",
-    borderRadius: 24,
+    backgroundColor: "rgba(30, 41, 59, 0.4)",
+    borderRadius: 30,
     padding: 32,
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#334155",
+    borderColor: "rgba(99, 102, 241, 0.4)",
     borderStyle: "dashed",
     marginTop: 20,
+    shadowColor: "#6366F1",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 20,
+    elevation: 4,
   },
   uploadIconContainer: {
     width: 80,
@@ -973,7 +1130,6 @@ const styles = StyleSheet.create({
   secondaryButton: { backgroundColor: "#334155" },
   accentButton: { backgroundColor: "#8B5CF6" },
   btnText: { color: "#FFF", fontWeight: "600", fontSize: 14, marginLeft: 8 },
-  btnIcon: { color: "#FFF" },
 
   gallerySection: { marginTop: 40 },
   sectionHeader: { marginBottom: 20 },
@@ -1004,11 +1160,11 @@ const styles = StyleSheet.create({
 
   workspace: { gap: 24 },
   card: {
-    backgroundColor: "#1E293B",
-    borderRadius: 20,
-    padding: 20,
+    backgroundColor: "rgba(30, 41, 59, 0.4)",
+    borderRadius: 24,
+    padding: 24,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "rgba(255, 255, 255, 0.05)",
   },
   cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
   stepBadge: {
@@ -1139,19 +1295,23 @@ const styles = StyleSheet.create({
   generateSection: { marginTop: 12, alignItems: "center" },
   generateBtn: {
     width: "100%",
-    backgroundColor: "#6366F1",
-    height: 56,
     borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#D946EF",
+    shadowOpacity: 0.6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  generateBtnInner: {
+    width: "100%",
+    height: 60,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#6366F1",
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
   },
   generateBtnDisabled: {
-    backgroundColor: "#334155",
+    opacity: 0.5,
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -1173,8 +1333,9 @@ const styles = StyleSheet.create({
     color: "#F8FAFC",
     marginBottom: 24,
   },
-  imageComparison: { width: "100%", gap: 20 },
+  imageComparison: { flexDirection: "row", width: "100%", gap: 10 },
   imageWrapper: {
+    flex: 1,
     borderRadius: 20,
     overflow: "hidden",
     backgroundColor: "#1E293B",
@@ -1225,12 +1386,12 @@ const styles = StyleSheet.create({
   },
 
   watermarkWrapper: {
-    
     backgroundColor: "#1E293B",
     borderRadius: 20,
     overflow: "hidden",
   },
   imageWrapperNoMargin: {
+    flex: 1,
     position: "relative",
   },
   watermarkFooter: {

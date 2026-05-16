@@ -1,6 +1,7 @@
 import React, { ReactNode } from "react";
-import { View, Text, StyleSheet, Image } from "react-native";
+import { View, Text, StyleSheet, Image, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
 
 type HeaderProps = {
   children?: ReactNode;
@@ -10,7 +11,7 @@ const Header: React.FC<HeaderProps> = ({ children }) => {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top }]}>
+    <BlurView intensity={80} tint="dark" style={[styles.header, { paddingTop: insets.top }]}>
       <View style={styles.headerNav}>
         <View style={styles.headerLogoContainer}>
           {/* Updated to use your provided logo */}
@@ -25,13 +26,15 @@ const Header: React.FC<HeaderProps> = ({ children }) => {
         </View>
         <View>{children}</View>
       </View>
-    </View>
+    </BlurView>
   );
 };
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#0F172A",
+    backgroundColor: "rgba(5, 5, 5, 0.6)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.05)",
   },
   headerNav: {
     flexDirection: "row",
