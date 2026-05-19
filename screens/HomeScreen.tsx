@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -177,7 +177,6 @@ const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
         return;
       }
       
-      // Save directly from the current image state URI
       await MediaLibrary.saveToLibraryAsync(generatedImage);
       Alert.alert("Saved!", "Your design has been successfully saved to your library.");
     } catch (error) {
@@ -199,7 +198,7 @@ const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
             url: generatedImage,
           });
         } else {
-          Alert.alert("Share", "Sharing is not supported on this browser context.");
+          Alert.alert("Share", "Sharing is not supported on this browser.");
         }
       } else {
         const RNShare = require('react-native-share').default;
@@ -553,7 +552,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 return;
               }
               
-              // Direct hook call invocation
               const responseData = await generateDesign(sourceImage, prompt, roomType);
               
               if (responseData && typeof responseData === 'object') {
@@ -561,7 +559,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 setPremiumHdBackupUrl(responseData.hdCleanImage);
                 deductCredits(cost);
               } else if (responseData === true) {
-                // Resilient fallback logic for backwards compatible service files
                 deductCredits(cost);
               }
             }}
@@ -620,10 +617,9 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     backgroundColor: "rgba(99,102,241,0.1)",
-    justifyContext: "center",
+    justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
-    justifyContent: 'center',
   },
   uploadTitle: { fontSize: 22, fontWeight: "700", color: "#F8FAFC", marginBottom: 8 },
   uploadSubtitle: { fontSize: 15, color: "#94A3B8", textAlign: "center", marginBottom: 24, lineHeight: 22 },

@@ -1,20 +1,19 @@
-# Use the official lightweight Node.js 18 image.
-# https://hub.docker.com/_/node
-FROM node:18-alpine
+# 1. Use the official Node.js image
+FROM node:18-slim
 
-# Create and change to the app directory.
+# 2. Install FFmpeg (THIS IS WHERE THE COMMAND GOES)
+RUN apt-get update && apt-get install -y ffmpeg
+
+# 3. Create app directory
 WORKDIR /usr/src/app
 
-# Copy application dependency manifests to the container image.
-# A wildcard is used to ensure both package.json AND package-lock.json are copied.
-# Copying this separately prevents re-running npm install on every code change.
+# 4. Install app dependencies
 COPY package*.json ./
+RUN npm install
 
-# Install production dependencies.
-RUN npm install --only=production
+# 5. Bundle app source
+COPY . .
 
-# Copy local code to the container image.
-COPY . ./
-
-# Run the web service on container startup.
+# 6. Expose the port and start the app
+EXPOSE 8080
 CMD [ "node", "server.js" ]
