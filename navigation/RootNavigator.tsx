@@ -9,7 +9,7 @@ import HomeScreen from "../screens/HomeScreen";
 import AboutScreen from "../screens/AboutScreen";
 import PrivacyScreen from "../screens/PrivacyScreen";
 import DisclaimerScreen from "../screens/DisclaimerScreen";
-// --- 1. ADDED: Import the new BuyCredits screen ---
+import GalleryScreen from "../screens/GalleryScreen";
 import BuyCreditsScreen from "../screens/BuyCreditsScreen";
 import ReferralScreen from "../screens/ReferralScreen";
 
@@ -55,8 +55,11 @@ const RootNavigator: React.FC = () => {
               component={ReferralScreen}
               options={{ headerShown: false }}
             />
-
             <Stack.Screen
+              name="Gallery"
+              component={GalleryScreen}
+              options={{ headerShown: false }}
+            />
               name="About"
               component={AboutScreen}
               options={{ ...legalScreenOptions, title: "About" }}
