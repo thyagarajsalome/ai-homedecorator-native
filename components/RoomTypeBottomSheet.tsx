@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, Dimensions, Modal } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { 
   useSharedValue, 
@@ -27,12 +27,18 @@ export const RoomTypeBottomSheet: React.FC<RoomTypeBottomSheetProps> = ({
   onSelect,
 }) => {
   const translateY = useSharedValue(SCREEN_HEIGHT);
+  const [modalVisible, setModalVisible] = useState(isVisible);
 
   useEffect(() => {
     if (isVisible) {
+      setModalVisible(true);
       translateY.value = withSpring(SCREEN_HEIGHT - SHEET_HEIGHT, { damping: 15 });
     } else {
-      translateY.value = withTiming(SCREEN_HEIGHT);
+      translateY.value = withTiming(SCREEN_HEIGHT, {}, (finished) => {
+        if (finished) {
+          runOnJS(setModalVisible)(false);
+        }
+      });
     }
   }, [isVisible]);
 
@@ -61,70 +67,78 @@ export const RoomTypeBottomSheet: React.FC<RoomTypeBottomSheetProps> = ({
     transform: [{ translateY: translateY.value }],
   }));
 
-  if (!isVisible && translateY.value === SCREEN_HEIGHT) return null;
-
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {/* Backdrop */}
-      {isVisible && (
+    <Modal
+      transparent
+      visible={modalVisible}
+      animationType="none"
+      onRequestClose={closeSheet}
+      statusBarTranslucent
+    >
+      <View style={styles.modalOverlay}>
+        {/* Backdrop */}
         <TouchableOpacity 
           style={styles.backdrop} 
           activeOpacity={1} 
           onPress={closeSheet} 
         />
-      )}
 
-      {/* Bottom Sheet Card */}
-      <GestureDetector gesture={panGesture}>
-        <Animated.View style={[styles.sheetContainer, animatedStyle]}>
-          {/* Drag Handle Indicator */}
-          <View style={styles.dragHandle} />
-          
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Select Room Type</Text>
-            <TouchableOpacity onPress={closeSheet}>
-              <Text style={styles.sheetCloseText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-
-          <FlatList
-            data={ROOM_TYPES}
-            keyExtractor={(item) => item}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.itemRow,
-                  item === selectedValue && styles.itemRowActive,
-                ]}
-                onPress={() => {
-                  onSelect(item);
-                  closeSheet();
-                }}
-              >
-                <Text
-                  style={[
-                    styles.itemText,
-                    item === selectedValue && styles.itemTextActive,
-                  ]}
-                >
-                  {item}
-                </Text>
-                {item === selectedValue && (
-                  <View style={styles.checkmark}>
-                    <Text style={{ color: 'white', fontSize: 12 }}>✓</Text>
-                  </View>
-                )}
+        {/* Bottom Sheet Card */}
+        <GestureDetector gesture={panGesture}>
+          <Animated.View style={[styles.sheetContainer, animatedStyle]}>
+            {/* Drag Handle Indicator */}
+            <View style={styles.dragHandle} />
+            
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Select Room Type</Text>
+              <TouchableOpacity onPress={closeSheet}>
+                <Text style={styles.sheetCloseText}>Done</Text>
               </TouchableOpacity>
-            )}
-          />
-        </Animated.View>
-      </GestureDetector>
-    </View>
+            </View>
+
+            <FlatList
+              data={ROOM_TYPES}
+              keyExtractor={(item) => item}
+              contentContainerStyle={styles.listContent}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.itemRow,
+                    item === selectedValue && styles.itemRowActive,
+                  ]}
+                  onPress={() => {
+                    onSelect(item);
+                    closeSheet();
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.itemText,
+                      item === selectedValue && styles.itemTextActive,
+                    ]}
+                  >
+                    {item}
+                  </Text>
+                  {item === selectedValue && (
+                    <View style={styles.checkmark}>
+                      <Text style={{ color: 'white', fontSize: 12 }}>✓</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </Animated.View>
+        </GestureDetector>
+      </View>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',

@@ -50,9 +50,9 @@ export const getPackages = async (): Promise<PurchasesPackage[]> => {
           identifier: "starter",
           description: "10 High-Res Generations",
           title: "Starter Pack (10 Credits)",
-          price: 4.99,
-          priceString: "$4.99",
-          currencyCode: "USD",
+          price: 399.00,
+          priceString: "Rs. 399",
+          currencyCode: "INR",
           introPrice: null
         }
       },
@@ -63,9 +63,9 @@ export const getPackages = async (): Promise<PurchasesPackage[]> => {
           identifier: "pro",
           description: "50 High-Res Generations + Priority",
           title: "Pro Pack (50 Credits)",
-          price: 14.99,
-          priceString: "$14.99",
-          currencyCode: "USD",
+          price: 999.00,
+          priceString: "Rs. 999",
+          currencyCode: "INR",
           introPrice: null
         }
       },
@@ -76,9 +76,9 @@ export const getPackages = async (): Promise<PurchasesPackage[]> => {
           identifier: "ultimate",
           description: "Unlimited potential with 200 Generations",
           title: "Ultimate Pack (200 Credits)",
-          price: 39.99,
-          priceString: "$39.99",
-          currencyCode: "USD",
+          price: 1999.00,
+          priceString: "Rs. 1999",
+          currencyCode: "INR",
           introPrice: null
         }
       }

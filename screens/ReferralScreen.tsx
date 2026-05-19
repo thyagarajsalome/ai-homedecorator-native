@@ -5,10 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  Clipboard,
   ScrollView,
   Platform,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
 
@@ -22,9 +23,10 @@ const ReferralScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   
   const shareMessage = `I'm designing my dream home with AI! 🚀 Use my invite code '${referralCode}' to get 3 FREE generations on Ai Home Decorator.\n\nDownload now:\nhttps://play.google.com/store/apps/details?id=com.aihomedecorator.twa`;
 
-  const copyToClipboard = () => {
-    Clipboard.setString(referralCode);
-    Alert.alert("Copied!", "Referral code copied to clipboard.");
+  const copyToClipboard = async () => {
+    await Clipboard.setStringAsync(referralCode);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert("Copied! ✅", "Referral code copied to clipboard.");
   };
 
   const handleShare = async () => {
@@ -86,11 +88,11 @@ const ReferralScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </View>
 
         <View style={styles.actions}>
-          <TouchableOpacity onPress={copyToClipboard} style={[styles.button, styles.secondaryButton]}>
-            <Text style={styles.buttonText}>Copy Code</Text>
+          <TouchableOpacity onPress={copyToClipboard} style={[styles.button, styles.secondaryButton]} activeOpacity={0.8}>
+            <Text style={styles.buttonText}>📋 Copy Code</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleShare} style={[styles.button, styles.primaryButton]}>
-            <Text style={styles.buttonText}>Share Link</Text>
+          <TouchableOpacity onPress={handleShare} style={[styles.button, styles.primaryButton]} activeOpacity={0.8} disabled={isSharing}>
+            <Text style={styles.buttonText}>{isSharing ? "Sharing..." : "🚀 Share Link"}</Text>
           </TouchableOpacity>
         </View>
 

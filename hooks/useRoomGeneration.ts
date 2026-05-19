@@ -3,36 +3,55 @@ import { Alert } from 'react-native';
 import * as geminiService from '../services/geminiService';
 import { useAuth } from '../context/AuthContext';
 
+// Typed response from the generation pipeline.
+// generatedImage  = watermarked URL shown by default.
+// hdCleanImage    = premium non-watermarked URL, revealed after credit deduction.
+export interface GenerationResult {
+  generatedImage: string;
+  hdCleanImage: string | null;
+}
+
 export const useRoomGeneration = () => {
   const { logout } = useAuth();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
 
-  const generateDesign = async (imageUri: string, prompt: string, roomType: string): Promise<boolean> => {
+  const generateDesign = async (
+    imageUri: string,
+    prompt: string,
+    roomType: string
+  ): Promise<GenerationResult | false> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const result = await geminiService.decorateRoom(imageUri, prompt, roomType);
       setGeneratedImageUrl(result);
-      return true;
+
+      // Backend currently returns a single generatedImage URL.
+      // hdCleanImage is the same image at this stage — it will be
+      // swapped for a true HD clean URL when the backend supports it.
+      return {
+        generatedImage: result,
+        hdCleanImage: result,
+      };
     } catch (e: any) {
-      const errorMessage = e.message || "An unknown error occurred.";
-      
+      const errorMessage = e.message || 'An unknown error occurred.';
+
       // Handle Supabase/Backend token expiration gracefully
       if (
-        errorMessage.includes("Invalid or expired token") ||
-        errorMessage.includes("JWT")
+        errorMessage.includes('Invalid or expired token') ||
+        errorMessage.includes('JWT')
       ) {
-        Alert.alert("Session Expired", "Please log in again.", [
-          { text: "Logout", onPress: logout },
+        Alert.alert('Session Expired', 'Please log in again.', [
+          { text: 'Logout', onPress: logout },
         ]);
-        setError("Session expired. Please login again.");
+        setError('Session expired. Please login again.');
       } else {
         setError(errorMessage);
       }
-      
+
       return false;
     } finally {
       setIsLoading(false);
@@ -41,14 +60,14 @@ export const useRoomGeneration = () => {
 
   const resetGeneration = () => {
     setGeneratedImageUrl(null);
-    setError(null); // Clear errors when resetting the workspace
+    setError(null);
   };
 
-  return { 
-    generateDesign, 
-    generatedImageUrl, 
-    isLoading, 
-    error, 
-    resetGeneration 
+  return {
+    generateDesign,
+    generatedImageUrl,
+    isLoading,
+    error,
+    resetGeneration,
   };
 };

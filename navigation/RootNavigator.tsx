@@ -60,6 +60,7 @@ const RootNavigator: React.FC = () => {
               component={GalleryScreen}
               options={{ headerShown: false }}
             />
+            <Stack.Screen
               name="About"
               component={AboutScreen}
               options={{ ...legalScreenOptions, title: "About" }}
