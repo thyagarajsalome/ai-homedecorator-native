@@ -10,6 +10,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import * as MediaLibrary from "expo-media-library";
+import * as FileSystem from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import { captureRef } from "react-native-view-shot";
 
@@ -62,10 +63,35 @@ const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
         );
         return;
       }
-      await MediaLibrary.saveToLibraryAsync(generatedImage);
+
+      let saveUri = generatedImage;
+
+      // Handle base64 image strings
+      if (generatedImage.startsWith("data:image/")) {
+        const formatMatch = generatedImage.match(/^data:image\/(\w+);base64,/);
+        const format = formatMatch ? formatMatch[1] : "jpeg";
+        const base64Data = generatedImage.replace(/^data:image\/\w+;base64,/, "");
+        
+        const fileUri = `${FileSystem.cacheDirectory}saved_design_${Date.now()}.${format}`;
+        await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        saveUri = fileUri;
+      } 
+      // Handle remote HTTP/HTTPS images
+      else if (generatedImage.startsWith("http://") || generatedImage.startsWith("https://")) {
+        const filename = generatedImage.split('/').pop()?.split('?')[0] || "ai_design.jpg";
+        const fileUri = `${FileSystem.documentDirectory}${Date.now()}_${filename}`;
+        
+        const downloadResult = await FileSystem.downloadAsync(generatedImage, fileUri);
+        saveUri = downloadResult.uri;
+      }
+
+      await MediaLibrary.saveToLibraryAsync(saveUri);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Saved! 🎉", "Your design has been saved to your gallery.");
-    } catch {
+    } catch (error) {
+      console.error("Save image error:", error);
       Alert.alert("Error", "Failed to save image. Please try again.");
     }
   };

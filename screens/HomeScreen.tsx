@@ -90,26 +90,26 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       return false;
     }
     try {
-      const { data, error: profileError } = await supabase
-        .from("user_profiles")
-        .select("generation_credits")
-        .eq("id", session?.user?.id)
-        .single();
+      // Call the secure server-side RPC to check and deduct 1 credit
+      const { data, error: rpcError } = await supabase.rpc('secure_deduct_credits', { 
+        cost_amount: 1 
+      });
 
-      if (profileError) throw profileError;
-      if (data.generation_credits < 1) {
-        setIsCreditAlertVisible(true);
+      if (rpcError) {
+        if (rpcError.message?.includes('Insufficient credits')) {
+          setIsCreditAlertVisible(true);
+        } else {
+          throw rpcError;
+        }
         return false;
       }
 
-      const { error: updateError } = await supabase
-        .from("user_profiles")
-        .update({ generation_credits: data.generation_credits - 1 })
-        .eq("id", session?.user?.id);
-
-      if (updateError) throw updateError;
-
-      deductCredits(1);
+      // Sync local credits state
+      if (data && typeof data.current_credits === 'number') {
+        fetchCredits(); // Fetch latest from DB to ensure sync
+      } else {
+        deductCredits(1);
+      }
 
       if (premiumHdBackupUrl) {
         setActiveDisplayImage(premiumHdBackupUrl);

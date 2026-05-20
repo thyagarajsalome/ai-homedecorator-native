@@ -133,6 +133,38 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
 
     console.log(`Processing design: [${roomType}] -> [${designPrompt}] for User ID: ${req.user.id}`);
 
+    // Create user-scoped Supabase client to perform credit validation under user context
+    const authHeader = req.headers.authorization;
+    const userToken = authHeader.split(' ')[1];
+    const userSupabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${userToken}`
+        }
+      },
+      auth: {
+        persistSession: false
+      }
+    });
+
+    const cost = designMode === 'custom' ? 3 : 1;
+
+    // 1. Secure Credit Check
+    const { data: profile, error: profileError } = await userSupabase
+      .from('user_profiles')
+      .select('generation_credits')
+      .eq('id', req.user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('Failed to retrieve user profile for credit check:', profileError);
+      return res.status(500).json({ error: 'Failed to verify user profile' });
+    }
+
+    if (profile.generation_credits < cost) {
+      return res.status(403).json({ error: `Insufficient credits. Need ${cost} credits, you have ${profile.generation_credits}.` });
+    }
+
     const base64Image = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
 
     // STEP 1: GEMINI PROMPT ENHANCEMENT
@@ -192,8 +224,18 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
       }
     }
 
-    if (!generatedImageBase64) {
-      generatedImageBase64 = getFallbackImage('Please configure REPLICATE_API_TOKEN');
+    if (generatedImageBase64) {
+      console.log(`Deducting ${cost} credits for User ID: ${req.user.id}`);
+      const { data: deductResult, error: deductError } = await userSupabase.rpc('secure_deduct_credits', {
+        cost_amount: cost
+      });
+
+      if (deductError) {
+        console.error('Database credit deduction failed:', deductError);
+        return res.status(402).json({ error: 'Failed to deduct credits. Generation cancelled.' });
+      }
+    } else {
+      return res.status(500).json({ error: 'Generation failed. No credits were deducted.' });
     }
 
     // STEP 3: CLOUD-SIDE COMPOSITE & WATERMARK

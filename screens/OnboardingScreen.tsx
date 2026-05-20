@@ -6,8 +6,8 @@ import {
   TouchableOpacity,
   Dimensions,
   Image,
-  SafeAreaView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   sliderWrapper: {
-    marginVertical: Spacing.lg,
+    marginVertical: Spacing.sm,
     width: "100%",
   },
   benefitsWrapper: {
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   },
   textWrapper: {
     alignItems: "center",
-    marginTop: Spacing.xl,
+    marginTop: Spacing.sm,
   },
   title: {
     color: Colors.text.primary,
@@ -381,8 +381,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
-    gap: Spacing.xl,
+    paddingBottom: 16,
+    gap: Spacing.md,
   },
   indicatorContainer: {
     flexDirection: "row",

@@ -3,9 +3,9 @@ import { View, StyleSheet, Dimensions, Image, Text, ImageSourcePropType } from '
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-// Calculate image size based on screen width minus padding (32 on each side)
-const IMAGE_SIZE = SCREEN_WIDTH - 64; 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+// Calculate image size based on screen width minus padding, capped by height to fit small devices
+const IMAGE_SIZE = Math.min(SCREEN_WIDTH - 64, SCREEN_HEIGHT * 0.42, 340); 
 
 interface BeforeAfterSliderProps {
   beforeImage: ImageSourcePropType;
@@ -13,14 +13,17 @@ interface BeforeAfterSliderProps {
 }
 
 export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ beforeImage, afterImage }) => {
+  const startX = useSharedValue(IMAGE_SIZE / 2);
   const position = useSharedValue(IMAGE_SIZE / 2);
 
   const panGesture = Gesture.Pan()
+    .onStart(() => {
+      startX.value = position.value;
+    })
     .onUpdate((e) => {
-      // Keep the slider within the image bounds
-      if (e.x >= 0 && e.x <= IMAGE_SIZE) {
-        position.value = e.x;
-      }
+      // Keep the slider within the image bounds smoothly
+      const val = startX.value + e.translationX;
+      position.value = Math.min(Math.max(val, 0), IMAGE_SIZE);
     });
 
   const animatedStyle = useAnimatedStyle(() => ({
