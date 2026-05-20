@@ -26,15 +26,16 @@ export const RoomTypeBottomSheet: React.FC<RoomTypeBottomSheetProps> = ({
   selectedValue,
   onSelect,
 }) => {
-  const translateY = useSharedValue(SCREEN_HEIGHT);
+  const translateY = useSharedValue(SHEET_HEIGHT);
   const [modalVisible, setModalVisible] = useState(isVisible);
 
   useEffect(() => {
     if (isVisible) {
+      translateY.value = SHEET_HEIGHT;
       setModalVisible(true);
-      translateY.value = withSpring(SCREEN_HEIGHT - SHEET_HEIGHT, { damping: 15 });
+      translateY.value = withSpring(0, { damping: 18, stiffness: 120 });
     } else {
-      translateY.value = withTiming(SCREEN_HEIGHT, {}, (finished) => {
+      translateY.value = withTiming(SHEET_HEIGHT, { duration: 220 }, (finished) => {
         if (finished) {
           runOnJS(setModalVisible)(false);
         }
@@ -43,29 +44,34 @@ export const RoomTypeBottomSheet: React.FC<RoomTypeBottomSheetProps> = ({
   }, [isVisible, translateY]);
 
   const closeSheet = () => {
-    translateY.value = withTiming(SCREEN_HEIGHT, {}, () => {
-      runOnJS(onClose)();
-    });
+    onClose();
   };
 
   // Drag down gesture to close sheet natively
   const panGesture = Gesture.Pan()
     .onUpdate((event) => {
       if (event.translationY > 0) {
-        translateY.value = SCREEN_HEIGHT - SHEET_HEIGHT + event.translationY;
+        translateY.value = event.translationY;
       }
     })
     .onEnd((event) => {
       if (event.translationY > 120 || event.velocityY > 500) {
-        runOnJS(closeSheet)();
+        runOnJS(onClose)();
       } else {
-        translateY.value = withSpring(SCREEN_HEIGHT - SHEET_HEIGHT, { damping: 15 });
+        translateY.value = withSpring(0, { damping: 18, stiffness: 120 });
       }
     });
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
+
+  const animatedBackdropStyle = useAnimatedStyle(() => {
+    const opacity = 1 - translateY.value / SHEET_HEIGHT;
+    return {
+      opacity: Math.max(0, Math.min(1, opacity)),
+    };
+  });
 
   return (
     <Modal
@@ -77,58 +83,62 @@ export const RoomTypeBottomSheet: React.FC<RoomTypeBottomSheetProps> = ({
     >
       <View style={styles.modalOverlay}>
         {/* Backdrop */}
-        <TouchableOpacity 
-          style={styles.backdrop} 
-          activeOpacity={1} 
-          onPress={closeSheet} 
-        />
+        <Animated.View style={[styles.backdrop, animatedBackdropStyle]}>
+          <TouchableOpacity 
+            style={{ flex: 1 }} 
+            activeOpacity={1} 
+            onPress={closeSheet} 
+          />
+        </Animated.View>
 
         {/* Bottom Sheet Card */}
-        <GestureDetector gesture={panGesture}>
-          <Animated.View style={[styles.sheetContainer, animatedStyle]}>
-            {/* Drag Handle Indicator */}
-            <View style={styles.dragHandle} />
-            
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Select Room Type</Text>
-              <TouchableOpacity onPress={closeSheet}>
-                <Text style={styles.sheetCloseText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={ROOM_TYPES}
-              keyExtractor={(item) => item}
-              contentContainerStyle={styles.listContent}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.itemRow,
-                    item === selectedValue && styles.itemRowActive,
-                  ]}
-                  onPress={() => {
-                    onSelect(item);
-                    closeSheet();
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.itemText,
-                      item === selectedValue && styles.itemTextActive,
-                    ]}
-                  >
-                    {item}
-                  </Text>
-                  {item === selectedValue && (
-                    <View style={styles.checkmark}>
-                      <Text style={{ color: 'white', fontSize: 12 }}>✓</Text>
-                    </View>
-                  )}
+        <Animated.View style={[styles.sheetContainer, animatedStyle]}>
+          <GestureDetector gesture={panGesture}>
+            <View style={styles.headerGestureArea}>
+              {/* Drag Handle Indicator */}
+              <View style={styles.dragHandle} />
+              
+              <View style={styles.sheetHeader}>
+                <Text style={styles.sheetTitle}>Select Room Type</Text>
+                <TouchableOpacity onPress={closeSheet}>
+                  <Text style={styles.sheetCloseText}>Done</Text>
                 </TouchableOpacity>
-              )}
-            />
-          </Animated.View>
-        </GestureDetector>
+              </View>
+            </View>
+          </GestureDetector>
+
+          <FlatList
+            data={ROOM_TYPES}
+            keyExtractor={(item) => item}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.itemRow,
+                  item === selectedValue && styles.itemRowActive,
+                ]}
+                onPress={() => {
+                  onSelect(item);
+                  closeSheet();
+                }}
+              >
+                <Text
+                  style={[
+                    styles.itemText,
+                    item === selectedValue && styles.itemTextActive,
+                  ]}
+                >
+                  {item}
+                </Text>
+                {item === selectedValue && (
+                  <View style={styles.checkmark}>
+                    <Text style={{ color: 'white', fontSize: 12 }}>✓</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -156,6 +166,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
     zIndex: 100,
+  },
+  headerGestureArea: {
+    width: '100%',
     paddingTop: 10,
   },
   dragHandle: {

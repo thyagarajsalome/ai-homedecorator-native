@@ -147,32 +147,34 @@ const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
       </View>
 
       <View style={styles.resultActions}>
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            onPress={handleDownload}
+            style={[styles.actionButton, styles.primaryButton]}
+            activeOpacity={0.8}
+          >
+            <DownloadIcon color={Colors.white} />
+            <Text style={styles.btnText}>Save</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleShare}
+            style={[styles.actionButton, styles.accentButton]}
+            activeOpacity={0.8}
+            disabled={isSharing}
+          >
+            <ShareIcon color={Colors.white} />
+            <Text style={styles.btnText}>{isSharing ? "..." : "Share"}</Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity
           onPress={onReset}
-          style={[styles.actionButton, styles.secondaryButton]}
+          style={[styles.actionButton, styles.secondaryButton, styles.fullWidthButton]}
           activeOpacity={0.8}
         >
           <ResetIcon color={Colors.white} />
           <Text style={styles.btnText}>Start Over</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={handleDownload}
-          style={[styles.actionButton, styles.primaryButton]}
-          activeOpacity={0.8}
-        >
-          <DownloadIcon color={Colors.white} />
-          <Text style={styles.btnText}>Save</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={handleShare}
-          style={[styles.actionButton, styles.accentButton]}
-          activeOpacity={0.8}
-          disabled={isSharing}
-        >
-          <ShareIcon color={Colors.white} />
-          <Text style={styles.btnText}>{isSharing ? "..." : "Share"}</Text>
         </TouchableOpacity>
       </View>
 
@@ -240,10 +242,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   resultActions: {
-    flexDirection: "row",
+    flexDirection: "column",
     width: "100%",
     gap: Spacing.md,
     marginTop: Spacing["2xl"],
+  },
+  actionRow: {
+    flexDirection: "row",
+    width: "100%",
+    gap: Spacing.md,
   },
   actionButton: {
     flex: 1,
@@ -253,6 +260,10 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: BorderRadius.lg,
     paddingHorizontal: 4,
+  },
+  fullWidthButton: {
+    flex: undefined,
+    width: "100%",
   },
   primaryButton: { backgroundColor: Colors.brand.primary },
   secondaryButton: { backgroundColor: Colors.background.subtle },

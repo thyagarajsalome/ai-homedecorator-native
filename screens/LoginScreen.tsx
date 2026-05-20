@@ -14,11 +14,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 import CustomAlert from "../components/CustomAlert"; // <--- Import CustomAlert
+import { useAuth } from "../context/AuthContext";
+import { GoogleIcon } from "../components/Icons";
 
 const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { signInWithGoogle } = useAuth();
 
   // --- Custom Alert State ---
   const [alertVisible, setAlertVisible] = useState(false);
@@ -37,6 +41,19 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setAlertVisible(true);
   };
   // ---------------------------
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (err: any) {
+      if (err.message && !err.message.includes("cancel")) {
+        showAlert("Google Login Failed", err.message || "Could not log in with Google.", "error");
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -161,15 +178,37 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </View>
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.button, (loading || googleLoading) && styles.buttonDisabled]}
               onPress={handleLogin}
-              disabled={loading}
+              disabled={loading || googleLoading}
               activeOpacity={0.8}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text style={styles.buttonText}>Sign In</Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.separatorContainer}>
+              <View style={styles.separatorLine} />
+              <Text style={styles.separatorText}>OR</Text>
+              <View style={styles.separatorLine} />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.googleButton, (loading || googleLoading) && styles.googleButtonDisabled]}
+              onPress={handleGoogleLogin}
+              disabled={loading || googleLoading}
+              activeOpacity={0.8}
+            >
+              {googleLoading ? (
+                <ActivityIndicator color="#F8FAFC" />
+              ) : (
+                <>
+                  <GoogleIcon style={styles.googleIcon} />
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                </>
               )}
             </TouchableOpacity>
 
@@ -284,7 +323,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 12,
-    marginBottom: 24,
+    marginBottom: 16,
     shadowColor: "#6366F1",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
@@ -297,6 +336,45 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  separatorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 16,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#334155",
+  },
+  separatorText: {
+    color: "#64748B",
+    paddingHorizontal: 12,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  googleButton: {
+    flexDirection: "row",
+    backgroundColor: "#1E293B",
+    height: 56,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#334155",
+    marginBottom: 24,
+  },
+  googleButtonDisabled: {
+    opacity: 0.5,
+    backgroundColor: "#0F172A",
+  },
+  googleIcon: {
+    marginRight: 12,
+  },
+  googleButtonText: {
+    color: "#F8FAFC",
     fontSize: 16,
     fontWeight: "700",
   },

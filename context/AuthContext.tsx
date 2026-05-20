@@ -5,9 +5,11 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+import { Platform } from "react-native";
 import { supabase } from "../lib/supabase";
 import { Session } from "@supabase/supabase-js";
 import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 import {
   identifyUser,
   logoutUser,
@@ -16,11 +18,14 @@ import {
 // 👇 Import the notification service
 import { registerForPushNotificationsAsync } from "../services/notificationService";
 
+WebBrowser.maybeCompleteAuthSession();
+
 interface AuthContextType {
   isAuthenticated: boolean;
   session: Session | null;
   login: () => void;
   logout: () => void;
+  signInWithGoogle: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -82,9 +87,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       if (url.includes("access_token") || url.includes("refresh_token")) {
         try {
-          const params = new URLSearchParams(url.split("#")[1]);
-          const accessToken = params.get("access_token");
-          const refreshToken = params.get("refresh_token");
+          const normalizedUrl = url.replace("#", "?");
+          const urlObj = new URL(normalizedUrl);
+          const accessToken = urlObj.searchParams.get("access_token");
+          const refreshToken = urlObj.searchParams.get("refresh_token");
 
           if (accessToken && refreshToken) {
             await supabase.auth.setSession({
@@ -126,9 +132,57 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const login = () => {};
 
+  const signInWithGoogle = async () => {
+    try {
+      const redirectUrl = Linking.createURL("login");
+
+      if (Platform.OS === "web") {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: redirectUrl,
+          },
+        });
+        if (error) throw error;
+        return;
+      }
+
+      // Native (iOS/Android) secure browser popup flow
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.url) throw new Error("No URL returned from Supabase OAuth");
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+
+      if (result.type === "success" && result.url) {
+        const urlObj = new URL(result.url.replace("#", "?"));
+        const accessToken = urlObj.searchParams.get("access_token");
+        const refreshToken = urlObj.searchParams.get("refresh_token");
+
+        if (accessToken && refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (sessionError) throw sessionError;
+        }
+      }
+    } catch (error) {
+      console.error("Google Sign-In Error:", error);
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated: !!session, session, login, logout }}
+      value={{ isAuthenticated: !!session, session, login, logout, signInWithGoogle }}
     >
       {!isLoading && children}
     </AuthContext.Provider>

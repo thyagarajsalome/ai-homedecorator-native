@@ -187,12 +187,6 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                 </View>
               </View>
             </View>
-            <View style={styles.textWrapper}>
-              <Text style={styles.title}>Ready to Redecorate?</Text>
-              <Text style={styles.subtitle}>
-                Join thousands of homeowners designing their dream homes with artificial intelligence.
-              </Text>
-            </View>
           </Animated.View>
         );
       default:

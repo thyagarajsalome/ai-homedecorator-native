@@ -20,10 +20,27 @@ export const decorateRoom = async (
   roomType?: string
 ): Promise<DecorateRoomResponse> => {
   try {
-    // 1. Get the current User Token
-    const {
+    // 1. Get/Refresh user session
+    let {
       data: { session },
     } = await supabase.auth.getSession();
+
+    if (session) {
+      const now = Math.floor(Date.now() / 1000);
+      // If token is expired or close to expiring (within 5 minutes / 300 seconds), refresh it
+      if (session.expires_at && session.expires_at < now + 300) {
+        try {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) throw refreshError;
+          if (refreshData.session) {
+            session = refreshData.session;
+          }
+        } catch (refreshErr) {
+          console.error("Failed to auto-refresh session, proceeding with existing:", refreshErr);
+        }
+      }
+    }
+
     const token = session?.access_token;
 
     if (!token) throw new Error("User not authenticated");
