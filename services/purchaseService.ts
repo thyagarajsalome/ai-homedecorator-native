@@ -47,11 +47,11 @@ export const getPackages = async (): Promise<PurchasesPackage[]> => {
         identifier: "starter_pack",
         packageType: "CUSTOM",
         product: {
-          identifier: "starter",
-          description: "10 High-Res Generations",
-          title: "Starter Pack (10 Credits)",
-          price: 399.00,
-          priceString: "Rs. 399",
+          identifier: "credits_15",
+          description: "15 Generations",
+          title: "Starter Pack",
+          price: 398.00,
+          priceString: "₹398",
           currencyCode: "INR",
           introPrice: null
         }
@@ -60,11 +60,11 @@ export const getPackages = async (): Promise<PurchasesPackage[]> => {
         identifier: "pro_pack",
         packageType: "CUSTOM",
         product: {
-          identifier: "pro",
-          description: "50 High-Res Generations + Priority",
-          title: "Pro Pack (50 Credits)",
-          price: 999.00,
-          priceString: "Rs. 999",
+          identifier: "credits_50",
+          description: "50 Generations",
+          title: "Best Value",
+          price: 998.00,
+          priceString: "₹998",
           currencyCode: "INR",
           introPrice: null
         }
@@ -73,11 +73,11 @@ export const getPackages = async (): Promise<PurchasesPackage[]> => {
         identifier: "ultimate_pack",
         packageType: "CUSTOM",
         product: {
-          identifier: "ultimate",
-          description: "Unlimited potential with 200 Generations",
-          title: "Ultimate Pack (200 Credits)",
-          price: 1999.00,
-          priceString: "Rs. 1999",
+          identifier: "credits_120",
+          description: "120 Generations",
+          title: "Pro Pack",
+          price: 1998.00,
+          priceString: "₹1998",
           currencyCode: "INR",
           introPrice: null
         }

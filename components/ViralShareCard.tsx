@@ -62,6 +62,7 @@ export const ViralShareCard = React.forwardRef<any, ViralShareCardProps>(
     );
   }
 );
+ViralShareCard.displayName = "ViralShareCard";
 
 export const ShareButton: React.FC<{
   beforeImage: string;
@@ -97,6 +98,7 @@ https://play.google.com/store/apps/details?id=com.aihomedecorator.twa
           Alert.alert("Share", "Copy the link from the app!");
         }
       } else {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const RNShare = require("react-native-share").default;
         await RNShare.open({
           title: "Share Your Dream Room",

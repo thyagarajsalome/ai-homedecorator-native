@@ -37,7 +37,7 @@ const SkeletonBar: React.FC<{ width: DimensionValue; height?: number; delay?: nu
       -1,
       false
     );
-  }, []);
+  }, [delay, opacity]);
 
   const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
@@ -69,7 +69,7 @@ const SpinnerRing: React.FC = () => {
       -1,
       false
     );
-  }, []);
+  }, [rotation]);
 
   const spinStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],

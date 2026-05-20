@@ -40,7 +40,7 @@ export const RoomTypeBottomSheet: React.FC<RoomTypeBottomSheetProps> = ({
         }
       });
     }
-  }, [isVisible]);
+  }, [isVisible, translateY]);
 
   const closeSheet = () => {
     translateY.value = withTiming(SCREEN_HEIGHT, {}, () => {

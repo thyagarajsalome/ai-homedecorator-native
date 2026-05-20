@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   StyleSheet,
   View,
@@ -11,15 +11,18 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import * as MediaLibrary from "expo-media-library";
 import * as Haptics from "expo-haptics";
+import { captureRef } from "react-native-view-shot";
 
 import { BeforeAfterSlider } from "../BeforeAfterSlider";
 import { DownloadIcon, ShareIcon, ResetIcon } from "../Icons";
 import { Colors, Spacing, BorderRadius, Typography } from "../../theme/designTokens";
+import { ViralShareCard } from "../ViralShareCard";
 
 interface GeneratedImageDisplayProps {
   sourceImage: string;
   generatedImage: string;
   hasUnlockedHd: boolean;
+  styleName: string;
   onReset: () => void;
   onRemoveWatermark: () => Promise<boolean>;
 }
@@ -28,11 +31,13 @@ const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
   sourceImage,
   generatedImage,
   hasUnlockedHd,
+  styleName,
   onReset,
   onRemoveWatermark,
 }) => {
   const [isSharing, setIsSharing] = useState(false);
   const [isRemovingWatermark, setIsRemovingWatermark] = useState(false);
+  const shareCardRef = useRef<any>(null);
 
   const handleRemoveWatermarkPress = async () => {
     setIsRemovingWatermark(true);
@@ -60,7 +65,7 @@ const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
       await MediaLibrary.saveToLibraryAsync(generatedImage);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Saved! 🎉", "Your design has been saved to your gallery.");
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to save image. Please try again.");
     }
   };
@@ -83,11 +88,22 @@ const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
           Alert.alert("Share", "Sharing is not supported in this browser.");
         }
       } else {
+        if (!shareCardRef.current) {
+          throw new Error("Sharing card ref is not ready.");
+        }
+
+        const uri = await captureRef(shareCardRef, {
+          format: "jpg",
+          quality: 0.95,
+          result: "tmpfile",
+        });
+
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const RNShare = require("react-native-share").default;
         await RNShare.open({
           title: "My AI Room Design",
           message: shareMessage,
-          url: generatedImage,
+          url: uri,
           type: "image/jpeg",
         });
       }
@@ -102,11 +118,23 @@ const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
 
   return (
     <Animated.View entering={FadeInDown.duration(600).springify()} style={styles.resultContainer}>
+      {/* Off-screen post card for capturing */}
+      {Platform.OS !== "web" && (
+        <View style={styles.hiddenCardContainer} pointerEvents="none">
+          <ViralShareCard
+            ref={shareCardRef}
+            beforeImage={sourceImage}
+            afterImage={generatedImage}
+            styleName={styleName}
+          />
+        </View>
+      )}
+
       <Text style={styles.resultHeader}>Your New Space ✨</Text>
 
       <View style={styles.watermarkWrapper}>
         <View style={{ padding: 10 }}>
-          <BeforeAfterSlider beforeImage={sourceImage} afterImage={generatedImage} />
+          <BeforeAfterSlider beforeImage={{ uri: sourceImage }} afterImage={{ uri: generatedImage }} />
         </View>
 
         {!hasUnlockedHd && (
@@ -174,6 +202,13 @@ const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
 };
 
 const styles = StyleSheet.create({
+  hiddenCardContainer: {
+    position: "absolute",
+    top: -9999,
+    left: -9999,
+    width: 600,
+    opacity: 0,
+  },
   resultContainer: {
     alignItems: "center",
     marginTop: Spacing.xl,

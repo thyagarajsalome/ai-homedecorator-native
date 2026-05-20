@@ -8,11 +8,17 @@ import { supabase } from "../lib/supabase";
 const BACKEND_URL =
   "https://ai-decorator-backend-358218923651.us-central1.run.app";
 
+export interface DecorateRoomResponse {
+  generatedImage: string;
+  hdCleanImage: string;
+  viralVideo: string | null;
+}
+
 export const decorateRoom = async (
   imageUri: string,
   stylePrompt: string,
   roomType?: string
-): Promise<string> => {
+): Promise<DecorateRoomResponse> => {
   try {
     // 1. Get the current User Token
     const {
@@ -59,8 +65,8 @@ export const decorateRoom = async (
 
     const result = await response.json();
 
-    // The backend returns { generatedImage: "data:image..." }
-    return result.generatedImage;
+    // The backend returns { generatedImage: "data:image...", hdCleanImage: "data:image...", viralVideo: "data:video..." }
+    return result;
   } catch (error) {
     console.error("Error in decorateRoom:", error);
     throw error;

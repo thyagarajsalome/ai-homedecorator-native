@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Dimensions, Image, Text } from 'react-native';
+import React from 'react';
+import { View, StyleSheet, Dimensions, Image, Text, ImageSourcePropType } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
@@ -8,8 +8,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const IMAGE_SIZE = SCREEN_WIDTH - 64; 
 
 interface BeforeAfterSliderProps {
-  beforeImage: string;
-  afterImage: string;
+  beforeImage: ImageSourcePropType;
+  afterImage: ImageSourcePropType;
 }
 
 export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ beforeImage, afterImage }) => {
@@ -35,14 +35,14 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ beforeImag
     <View style={[styles.container, { width: IMAGE_SIZE, height: IMAGE_SIZE }]}>
       
       {/* Bottom Image (Before) */}
-      <Image source={{ uri: beforeImage }} style={styles.fullImage} />
+      <Image source={beforeImage} style={styles.fullImage} />
       <View style={[styles.badge, styles.badgeRight]}>
         <Text style={styles.badgeText}>Original</Text>
       </View>
 
       {/* Top Image (After - Clipped via Reanimated) */}
       <Animated.View style={[styles.clippedView, animatedStyle]}>
-        <Image source={{ uri: afterImage }} style={styles.fullImage} />
+        <Image source={afterImage} style={styles.fullImage} />
         <View style={[styles.badge, styles.badgeLeft]}>
           <Text style={styles.badgeText}>AI Design</Text>
         </View>
@@ -142,3 +142,5 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
   },
 });
+
+export default BeforeAfterSlider;

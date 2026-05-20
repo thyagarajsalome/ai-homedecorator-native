@@ -44,6 +44,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [activeDisplayImage, setActiveDisplayImage] = useState<string | null>(null);
   const [premiumHdBackupUrl, setPremiumHdBackupUrl] = useState<string | null>(null);
   const [hasUnlockedPremiumHd, setHasUnlockedPremiumHd] = useState(false);
+  const [generationStyleName, setGenerationStyleName] = useState<string>("Modern");
 
   // Auth & Business Logic
   const { session, logout } = useAuth();
@@ -67,12 +68,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     resetGeneration();
   };
 
-  const handleGenerate = async (prompt: string, roomType: string, cost: number) => {
+  const handleGenerate = async (prompt: string, roomType: string, cost: number, styleName: string) => {
     if (credits < cost) {
       setIsCreditAlertVisible(true);
       return;
     }
 
+    setGenerationStyleName(styleName);
     const result = await generateDesign(sourceImage!, prompt, roomType);
 
     if (result !== false) {
@@ -176,6 +178,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             sourceImage={sourceImage}
             generatedImage={activeDisplayImage}
             hasUnlockedHd={hasUnlockedPremiumHd}
+            styleName={generationStyleName}
             onReset={handleResetWorkspace}
             onRemoveWatermark={handleRemoveWatermark}
           />
@@ -183,7 +186,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           /* Phase 1: Upload */
           <>
             <ImageUploader onImageSelected={setSourceImage} />
-            <InspirationGallery />
+            <InspirationGallery onSelectPreset={setSourceImage} />
           </>
         ) : (
           /* Phase 2: Configure */

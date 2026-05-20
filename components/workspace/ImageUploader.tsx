@@ -121,6 +121,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = React.memo(({ onImageSelecte
     </View>
   );
 });
+ImageUploader.displayName = "ImageUploader";
 
 const styles = StyleSheet.create({
   uploadCard: {

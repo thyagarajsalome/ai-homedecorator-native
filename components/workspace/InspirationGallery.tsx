@@ -1,53 +1,84 @@
 import React from "react";
-import { StyleSheet, View, Text, Image } from "react-native";
+import { StyleSheet, View, Text, Image, TouchableOpacity } from "react-native";
+import * as Haptics from "expo-haptics";
 import { Colors, Spacing, BorderRadius, Typography } from "../../theme/designTokens";
 
-// Static inspiration images - shown on the upload/landing state
-// to inspire users before they take action.
+// Cross-platform helper to resolve local asset URIs safely on web and native
+const getAssetUri = (asset: any): string => {
+  if (typeof asset === "string") return asset;
+  try {
+    return Image.resolveAssetSource(asset)?.uri || "";
+  } catch {
+    return "";
+  }
+};
+
 const INSPIRATION_IMAGES = [
   {
     id: "1",
-    image: require("../../assets/images/inspiration/living-room.jpg"),
-    label: "Living Room",
+    image: require("../../assets/images/inspiration/living-room.png"),
+    beforeAsset: require("../../assets/images/onboarding/before_living_hall.png"),
+    label: "Living Hall",
   },
   {
     id: "2",
-    image: require("../../assets/images/inspiration/bedroom.jpg"),
+    image: require("../../assets/images/inspiration/bedroom.png"),
+    beforeAsset: require("../../assets/images/onboarding/before_bedroom.png"),
     label: "Bedroom",
   },
   {
     id: "3",
-    image: require("../../assets/images/inspiration/kitchen.jpg"),
+    image: require("../../assets/images/inspiration/kitchen.png"),
+    beforeAsset: require("../../assets/images/onboarding/before_kitchen.png"),
     label: "Kitchen",
   },
   {
     id: "4",
-    image: require("../../assets/images/inspiration/bathroom.jpg"),
+    image: require("../../assets/images/inspiration/bathroom.png"),
+    beforeAsset: require("../../assets/images/onboarding/before_bathroom.png"),
     label: "Bathroom",
   },
 ];
 
-const InspirationGallery: React.FC = React.memo(() => {
+interface InspirationGalleryProps {
+  onSelectPreset: (uri: string) => void;
+}
+
+const InspirationGallery: React.FC<InspirationGalleryProps> = React.memo(({ onSelectPreset }) => {
+  const handlePress = (beforeAsset: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const resolvedUri = getAssetUri(beforeAsset);
+    if (resolvedUri) {
+      onSelectPreset(resolvedUri);
+    }
+  };
+
   return (
     <View style={styles.gallerySection}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Get Inspired</Text>
-        <Text style={styles.sectionSubtitle}>See what's possible with AI</Text>
+        <Text style={styles.sectionSubtitle}>Tap any demo room below to try redesigning it instantly!</Text>
       </View>
 
       <View style={styles.galleryGrid}>
         {INSPIRATION_IMAGES.map((item) => (
-          <View key={item.id} style={styles.galleryCard}>
+          <TouchableOpacity
+            key={item.id}
+            style={styles.galleryCard}
+            onPress={() => handlePress(item.beforeAsset)}
+            activeOpacity={0.8}
+          >
             <Image source={item.image} style={styles.galleryImg} />
             <View style={styles.galleryOverlay}>
               <Text style={styles.galleryLabel}>{item.label}</Text>
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
     </View>
   );
 });
+InspirationGallery.displayName = "InspirationGallery";
 
 const styles = StyleSheet.create({
   gallerySection: {
@@ -64,7 +95,7 @@ const styles = StyleSheet.create({
   sectionSubtitle: {
     fontSize: Typography.size.base,
     color: Colors.text.muted,
-    marginTop: 2,
+    marginTop: 4,
   },
   galleryGrid: {
     flexDirection: "row",

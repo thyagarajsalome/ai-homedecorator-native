@@ -25,7 +25,7 @@ interface DesignWorkspaceProps {
   credits: number;
   onReset: () => void;
   onBuyCreditsNavigate: () => void;
-  onGenerate: (prompt: string, roomType: string, cost: number) => void;
+  onGenerate: (prompt: string, roomType: string, cost: number, styleName: string) => void;
 }
 
 const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
@@ -66,8 +66,11 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
       return;
     }
 
+    const decorationStyleName =
+      decorMode === "style" ? selectedStyle?.name || "Style" : "Custom Design";
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onGenerate(decorationPrompt, roomType, creditCost);
+    onGenerate(decorationPrompt, roomType, creditCost, decorationStyleName);
   };
 
   const toggleAccordion = (catName: string) => {
