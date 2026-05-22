@@ -11,7 +11,7 @@ serve(async (req) => {
       body: JSON.stringify({
         to: pushToken,
         title: "Welcome to AI Home Decorator! 🏠",
-        body: "You've received 3 free credits! Start designing your dream room now.",
+        body: "You've received 2 free credits! Start designing your dream room now.",
         data: { screen: "Home" },
       }),
     });

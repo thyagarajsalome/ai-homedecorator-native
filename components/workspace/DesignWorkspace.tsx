@@ -282,9 +282,8 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
       {/* Generate Button */}
       <View style={styles.generateSection}>
         <TouchableOpacity
-          style={[styles.generateBtn, !hasEnoughCredits && styles.generateBtnDisabled]}
+          style={styles.generateBtn}
           onPress={handleDecoratePress}
-          disabled={!hasEnoughCredits}
           activeOpacity={0.8}
         >
           <LinearGradient
@@ -302,7 +301,7 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
         </TouchableOpacity>
 
         {!hasEnoughCredits ? (
-          <Text style={styles.lowCreditText}>⚠️ Out of credits</Text>
+          <Text style={styles.lowCreditText}>⚠️ Out of credits — Click Generate to purchase more</Text>
         ) : (
           <Text style={styles.balanceText}>You have {credits} credits available</Text>
         )}
