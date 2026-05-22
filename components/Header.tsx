@@ -2,6 +2,7 @@ import React, { ReactNode } from "react";
 import { View, Text, StyleSheet, Image, StatusBar, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
+import { Colors, Spacing } from "../theme/designTokens";
 
 type HeaderProps = {
   children?: ReactNode;
@@ -35,25 +36,25 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: "rgba(5, 5, 5, 0.6)",
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.05)",
+    borderBottomColor: Colors.border.default,
   },
   headerNav: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     height: 60,
-    paddingHorizontal: 20,
+    paddingHorizontal: Spacing.md,
   },
   headerLogoContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: Spacing.sm,
   },
   headerTitleContainer: {
     justifyContent: "center",
   },
   headerTitle: {
-    color: "#F8FAFC",
+    color: Colors.text.primary,
     fontSize: 18,
     fontWeight: "700",
     letterSpacing: 0.5,
