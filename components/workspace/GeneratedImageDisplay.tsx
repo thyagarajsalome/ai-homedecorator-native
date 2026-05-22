@@ -83,6 +83,22 @@ const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
 
   const handleDownload = async () => {
     try {
+      if (Platform.OS === "web") {
+        const link = document.createElement("a");
+        link.href = generatedImage;
+        link.download = `ai_design_${Date.now()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        try {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (e) {
+          // ignore haptics error on web
+        }
+        Alert.alert("Saved! 🎉", "Your design has been downloaded.");
+        return;
+      }
+
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
@@ -134,11 +150,29 @@ const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
 
       if (Platform.OS === "web") {
         if (navigator.share) {
-          await navigator.share({
+          const shareData: any = {
             title: "My AI Room Design",
             text: shareMessage,
-            url: generatedImage,
-          });
+          };
+
+          if (generatedImage && (generatedImage.startsWith("http://") || generatedImage.startsWith("https://"))) {
+            shareData.url = generatedImage;
+          } else if (generatedImage && generatedImage.startsWith("data:image/")) {
+            try {
+              const res = await fetch(generatedImage);
+              const blob = await res.blob();
+              const formatMatch = generatedImage.match(/^data:image\/(\w+);base64,/);
+              const format = formatMatch ? formatMatch[1] : "jpeg";
+              const file = new File([blob], `ai_design.${format}`, { type: blob.type });
+              if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                shareData.files = [file];
+              }
+            } catch (fileErr) {
+              console.error("Error creating file for share:", fileErr);
+            }
+          }
+
+          await navigator.share(shareData);
         } else {
           Alert.alert("Share", "Sharing is not supported in this browser.");
         }

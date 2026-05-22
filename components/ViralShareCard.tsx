@@ -93,7 +93,22 @@ https://play.google.com/store/apps/details?id=com.aihomedecorator.twa
 
       if (Platform.OS === "web") {
         if (navigator.share) {
-          await navigator.share({ text: message, files: [uri] as any });
+          const shareData: any = { text: message };
+          if (uri && uri.startsWith("data:image/")) {
+            try {
+              const res = await fetch(uri);
+              const blob = await res.blob();
+              const file = new File([blob], "share_post.jpg", { type: "image/jpeg" });
+              if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                shareData.files = [file];
+              }
+            } catch (fileErr) {
+              console.error("Error creating file for share:", fileErr);
+            }
+          } else if (uri && (uri.startsWith("http://") || uri.startsWith("https://"))) {
+            shareData.url = uri;
+          }
+          await navigator.share(shareData);
         } else {
           Alert.alert("Share", "Copy the link from the app!");
         }
