@@ -13,8 +13,6 @@ import AboutScreen from "../screens/AboutScreen";
 import PrivacyScreen from "../screens/PrivacyScreen";
 import DisclaimerScreen from "../screens/DisclaimerScreen";
 import GalleryScreen from "../screens/GalleryScreen";
-import BuyCreditsScreen from "../screens/BuyCreditsScreen";
-import ReferralScreen from "../screens/ReferralScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -64,20 +62,6 @@ const RootNavigator: React.FC = () => {
               name="Home"
               component={HomeScreen}
               options={{ headerShown: false }} // No header for main screen
-            />
-
-            {/* --- 2. ADDED: Buy Credits Screen --- */}
-            <Stack.Screen
-              name="BuyCredits"
-              component={BuyCreditsScreen}
-              options={{ headerShown: false }} // It has its own custom header
-            />
-            {/* ------------------------------------ */}
-
-            <Stack.Screen
-              name="Referral"
-              component={ReferralScreen}
-              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="Gallery"

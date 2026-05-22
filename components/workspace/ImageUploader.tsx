@@ -99,6 +99,14 @@ const ImageUploader: React.FC<ImageUploaderProps> = React.memo(({ onImageSelecte
         Upload a photo of your room or take a new one to get started.
       </Text>
 
+      <View style={styles.realPhotoWarningContainer}>
+        <Text style={styles.warningIcon}>💡</Text>
+        <Text style={styles.warningText}>
+          <Text style={{ fontWeight: "bold", color: Colors.brand.primaryLight }}>Note: </Text>
+          Always use a real photo of your room, not an AI-generated image.
+        </Text>
+      </View>
+
       <View style={styles.uploadActions}>
         <TouchableOpacity
           onPress={openImageGallery}
@@ -176,6 +184,27 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.semiBold,
     fontSize: Typography.size.base,
     marginLeft: Spacing.sm,
+  },
+  realPhotoWarningContainer: {
+    flexDirection: "row",
+    backgroundColor: "rgba(245, 158, 11, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(245, 158, 11, 0.3)",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.xl,
+    alignItems: "center",
+    width: "100%",
+  },
+  warningIcon: {
+    fontSize: 18,
+    marginRight: Spacing.sm,
+  },
+  warningText: {
+    color: Colors.text.secondary,
+    fontSize: Typography.size.sm + 1,
+    flex: 1,
+    lineHeight: 18,
   },
 });
 

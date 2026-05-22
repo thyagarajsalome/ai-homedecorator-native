@@ -10,7 +10,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import * as MediaLibrary from "expo-media-library";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/src/legacy";
 import * as Haptics from "expo-haptics";
 import { captureRef } from "react-native-view-shot";
 
@@ -27,6 +27,35 @@ interface GeneratedImageDisplayProps {
   onReset: () => void;
   onRemoveWatermark: () => Promise<boolean>;
 }
+
+const getAiChangesDescription = (styleName: string): string => {
+  const parts = styleName.split(" - ");
+  const category = parts[0] || "";
+  const choice = parts[1] || "";
+
+  if (category.toLowerCase().includes("flooring")) {
+    return `Replaced the floor surface with ${choice}. The original furniture placement, wall color, ceiling details, lighting, and general room perspective have been fully preserved.`;
+  }
+  if (category.toLowerCase().includes("wall paint") || category.toLowerCase().includes("wall")) {
+    return `Updated the wall surface style to ${choice}. The existing flooring, furniture, room layout, ceiling, and window frames have been kept completely intact.`;
+  }
+  if (category.toLowerCase().includes("window") || category.toLowerCase().includes("blind")) {
+    return `Modified the window framing and window treatments to show ${choice}. The core room architecture, flooring, wall paint, and furniture layout have been preserved without modification.`;
+  }
+  if (category.toLowerCase().includes("lighting") || category.toLowerCase().includes("mood")) {
+    return `Transformed the room's lighting atmosphere to ${choice} illumination. All physical elements, furniture placement, structural walls, and floor materials remain unchanged.`;
+  }
+  if (category.toLowerCase().includes("patio") || category.toLowerCase().includes("outdoor")) {
+    return `Redesigned the outdoor patio area with a ${choice} design. The building's exterior architecture, background environment, and structural alignment have been preserved.`;
+  }
+  if (category.toLowerCase().includes("kitchen") || category.toLowerCase().includes("bath")) {
+    return `Remodeled the cabinetry, countertops, and structural fixtures to a ${choice} layout. The room's bounding walls and windows have been maintained for structural consistency.`;
+  }
+  if (category.toLowerCase().includes("full room") || category.toLowerCase().includes("redesign")) {
+    return `Completely redesigned the entire space in a premium ${choice} aesthetic. All furniture, color palettes, flooring, wall designs, and decorative objects have been replaced, maintaining only the original structural boundaries.`;
+  }
+  return `Applied ${choice} changes to the ${category} element while keeping the rest of the room layout intact.`;
+};
 
 const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
   sourceImage,
@@ -170,6 +199,14 @@ const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
             </Text>
           </View>
         )}
+      </View>
+
+      {/* AI Modification Details Card */}
+      <View style={styles.detailsCard}>
+        <Text style={styles.detailsTitle}>AI Modification Details</Text>
+        <Text style={styles.detailsText}>
+          {getAiChangesDescription(styleName)}
+        </Text>
       </View>
 
       <View style={styles.resultActions}>
@@ -316,6 +353,26 @@ const styles = StyleSheet.create({
     color: Colors.brand.primaryLight,
     fontWeight: Typography.weight.bold,
     fontSize: Typography.size.md,
+  },
+  detailsCard: {
+    width: "100%",
+    backgroundColor: Colors.background.card,
+    borderWidth: 1,
+    borderColor: Colors.border.default,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    marginTop: Spacing.xl,
+  },
+  detailsTitle: {
+    color: Colors.text.primary,
+    fontWeight: Typography.weight.bold,
+    fontSize: Typography.size.base,
+    marginBottom: Spacing.xs,
+  },
+  detailsText: {
+    color: Colors.text.secondary,
+    fontSize: Typography.size.sm + 1,
+    lineHeight: 18,
   },
 });
 

@@ -5,16 +5,12 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { Platform } from "react-native";
+import { Platform, View, ActivityIndicator } from "react-native";
 import { supabase } from "../lib/supabase";
 import { Session } from "@supabase/supabase-js";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
-import {
-  identifyUser,
-  logoutUser,
-  initPurchases,
-} from "../services/purchaseService";
+// 👇 Import the notification service
 // 👇 Import the notification service
 import { registerForPushNotificationsAsync } from "../services/notificationService";
 
@@ -40,8 +36,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     // Wrapper function to handle async initialization order
     const initializeApp = async () => {
       try {
-        // 1. Initialize RevenueCat FIRST
-        await initPurchases();
+
 
         // 2. Check active Supabase session
         const {
@@ -49,9 +44,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         } = await supabase.auth.getSession();
         setSession(session);
 
-        // 3. If user is logged in, link identity and register for notifications
+        // 2. If user is logged in, register for notifications
         if (session?.user) {
-          await identifyUser(session.user.id); //
           // 👇 Register notifications on app start if session exists
           registerForPushNotificationsAsync(session.user.id);
         }
@@ -71,13 +65,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
 
-      // Handle identity and notifications on auth changes
+      // Handle notifications on auth changes
       if (session?.user) {
-        await identifyUser(session.user.id); //
         // 👇 Register notifications whenever a user logs in
         registerForPushNotificationsAsync(session.user.id);
-      } else {
-        await logoutUser(); //
       }
     });
 
@@ -121,8 +112,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const logout = async () => {
     try {
       await supabase.auth.signOut();
-      // Ensure logout from RevenueCat
-      await logoutUser();
+
     } catch (error) {
       console.log("Logout error:", error);
     } finally {
@@ -180,11 +170,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#0F172A", justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#6366F1" />
+      </View>
+    );
+  }
+
   return (
     <AuthContext.Provider
       value={{ isAuthenticated: !!session, session, login, logout, signInWithGoogle }}
     >
-      {!isLoading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

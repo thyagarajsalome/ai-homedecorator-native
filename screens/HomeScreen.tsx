@@ -20,6 +20,7 @@ import { supabase } from "../lib/supabase";
 import Loader from "../components/Loader";
 import Header from "../components/Header";
 import { CustomAlertModal } from "../components/CustomAlertModal";
+import { HelpTutorialModal } from "../components/HelpTutorialModal";
 
 // Workspace Sub-Components (extracted from HomeScreen for clean architecture)
 import ImageUploader from "../components/workspace/ImageUploader";
@@ -39,6 +40,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // Phase State
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [isCreditAlertVisible, setIsCreditAlertVisible] = useState(false);
+  const [isHelpModalVisible, setIsHelpModalVisible] = useState(false);
 
   // Premium HD tracking
   const [activeDisplayImage, setActiveDisplayImage] = useState<string | null>(null);
@@ -137,23 +139,29 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       <CustomAlertModal
         visible={isCreditAlertVisible}
         title="Out of Credits"
-        message="You need more credits to continue decorating. Grab a pack now!"
+        message="Your free 2-generation registration allowance has been fully exhausted."
         onCancel={() => setIsCreditAlertVisible(false)}
-        onConfirm={() => {
-          setIsCreditAlertVisible(false);
-          navigation.navigate("BuyCredits");
-        }}
-        confirmText="GET CREDITS"
+        onConfirm={() => setIsCreditAlertVisible(false)}
+        confirmText="OK"
+      />
+
+      {/* User Guide Tutorial Modal */}
+      <HelpTutorialModal
+        isVisible={isHelpModalVisible}
+        onClose={() => setIsHelpModalVisible(false)}
       />
 
       {/* App Header */}
       <Header>
         <View style={styles.headerActions}>
+          <View style={styles.headerCredits}>
+            <Text style={styles.headerCreditsText}>🪙 {credits} Credits</Text>
+          </View>
           <TouchableOpacity
-            onPress={() => navigation.navigate("Referral")}
-            style={[styles.headerBtn, styles.headerBtnPrimary]}
+            onPress={() => setIsHelpModalVisible(true)}
+            style={[styles.headerBtn, { marginRight: Spacing.xs }]}
           >
-            <Text style={styles.headerBtnText}>🎁 Free Credits</Text>
+            <Text style={styles.headerBtnText}>💡 Guide</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={logout} style={styles.headerBtn}>
             <Text style={styles.headerBtnText}>Log Out</Text>
@@ -194,7 +202,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             sourceImage={sourceImage}
             credits={credits}
             onReset={handleResetWorkspace}
-            onBuyCreditsNavigate={() => navigation.navigate("BuyCredits")}
             onGenerate={handleGenerate}
           />
         )}
@@ -242,6 +249,15 @@ const styles = StyleSheet.create({
     color: Colors.semantic.error,
     textAlign: "center",
     fontSize: Typography.size.base,
+  },
+  headerCredits: {
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+  headerCreditsText: {
+    color: Colors.brand.primaryLight,
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.bold,
   },
 });
 

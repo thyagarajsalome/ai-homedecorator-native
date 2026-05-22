@@ -20,7 +20,6 @@ import { GoogleIcon } from "../components/Icons";
 const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const { signInWithGoogle } = useAuth();
@@ -52,9 +51,6 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         email,
         password,
         options: {
-          data: {
-            referral_code: inviteCode.trim(),
-          },
           // This tells Supabase to open your app after the user clicks the email link
           emailRedirectTo: "aihomedecoratornative://login",
         },
@@ -119,18 +115,6 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Invite Code (Optional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter 8-character code"
-                placeholderTextColor="#64748B"
-                value={inviteCode}
-                onChangeText={setInviteCode}
-                autoCapitalize="characters"
-                autoCorrect={false}
-              />
-            </View>
 
             <TouchableOpacity
               style={[styles.button, (loading || googleLoading) && styles.buttonDisabled]}

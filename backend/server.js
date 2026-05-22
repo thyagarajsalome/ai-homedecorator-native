@@ -147,7 +147,7 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
       }
     });
 
-    const cost = designMode === 'custom' ? 3 : 1;
+    const cost = 1;
 
     // 1. Secure Credit Check
     const { data: profile, error: profileError } = await userSupabase
