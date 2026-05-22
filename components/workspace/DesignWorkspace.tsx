@@ -79,9 +79,6 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
     Haptics.selectionAsync();
     setSelectedCategoryId(id);
     setSelectedChoice(null);
-    if (CATEGORY_TIPS[id]) {
-      Alert.alert(CATEGORY_TIPS[id].title, CATEGORY_TIPS[id].message);
-    }
   };
 
   const handleChoiceSelect = (choice: SubCategoryChoice) => {
