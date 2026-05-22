@@ -31,5 +31,9 @@ export const useCredits = () => {
     setCredits((prev) => Math.max(0, prev - amount));
   };
 
-  return { credits, fetchCredits, deductCredits };
+  const addCredits = (amount: number) => {
+    setCredits((prev) => prev + amount);
+  };
+
+  return { credits, fetchCredits, deductCredits, addCredits };
 };

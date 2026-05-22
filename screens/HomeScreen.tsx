@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -6,9 +6,12 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Business Logic Hooks
 import { useCredits } from "../hooks/useCredits";
@@ -20,7 +23,8 @@ import { supabase } from "../lib/supabase";
 import Loader from "../components/Loader";
 import Header from "../components/Header";
 import { CustomAlertModal } from "../components/CustomAlertModal";
-import { HelpTutorialModal } from "../components/HelpTutorialModal";
+import { CelebrationModal } from "../components/CelebrationModal";
+import { StoreModal } from "../components/StoreModal";
 
 // Workspace Sub-Components (extracted from HomeScreen for clean architecture)
 import ImageUploader from "../components/workspace/ImageUploader";
@@ -37,10 +41,14 @@ import { Colors, Typography, Spacing, BorderRadius } from "../theme/designTokens
 // All rendering is delegated to the workspace sub-components.
 // ============================================================
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const isSmallScreen = width < 375;
+
   // Phase State
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [isCreditAlertVisible, setIsCreditAlertVisible] = useState(false);
-  const [isHelpModalVisible, setIsHelpModalVisible] = useState(false);
+  const [isCelebrationVisible, setIsCelebrationVisible] = useState(false);
+  const [isStoreVisible, setIsStoreVisible] = useState(false);
 
   // Premium HD tracking
   const [activeDisplayImage, setActiveDisplayImage] = useState<string | null>(null);
@@ -50,8 +58,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   // Auth & Business Logic
   const { session, logout } = useAuth();
-  const { credits, fetchCredits, deductCredits } = useCredits();
+  const { credits, fetchCredits, deductCredits, addCredits } = useCredits();
   const { generateDesign, isLoading, error, resetGeneration } = useRoomGeneration();
+
+  // Track previous credits value to watch for drop to 0
+  const prevCreditsRef = React.useRef<number | null>(null);
 
   // Re-fetch credits every time user navigates back to this screen
   useFocusEffect(
@@ -59,6 +70,36 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       fetchCredits();
     }, [fetchCredits])
   );
+
+  // Check and trigger sign-in celebration if eligible
+  useEffect(() => {
+    const checkCelebration = async () => {
+      if (session?.user?.id) {
+        const celebratedKey = `celebrated_sign_in_${session.user.id}`;
+        const hasCelebrated = await AsyncStorage.getItem(celebratedKey);
+        if (!hasCelebrated) {
+          setIsCelebrationVisible(true);
+          await AsyncStorage.setItem(celebratedKey, "true");
+        }
+      }
+    };
+    checkCelebration();
+  }, [session?.user?.id]);
+
+  // Watch for credits dropping to exactly 0 to notify the user
+  useEffect(() => {
+    if (prevCreditsRef.current !== null && prevCreditsRef.current > 0 && credits === 0) {
+      Alert.alert(
+        "Out of Credits 🪙",
+        "You have used your last design credit! To keep designing and modifying your rooms, you can buy more credits anytime.",
+        [
+          { text: "View Pricing", onPress: () => setIsStoreVisible(true) },
+          { text: "Dismiss", style: "cancel" }
+        ]
+      );
+    }
+    prevCreditsRef.current = credits;
+  }, [credits]);
 
   // ---- Handlers ----
 
@@ -72,7 +113,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const handleGenerate = async (prompt: string, roomType: string, cost: number, styleName: string) => {
     if (credits < cost) {
-      setIsCreditAlertVisible(true);
+      setIsStoreVisible(true);
       return;
     }
 
@@ -88,7 +129,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const handleRemoveWatermark = async (): Promise<boolean> => {
     if (credits < 1) {
-      setIsCreditAlertVisible(true);
+      setIsStoreVisible(true);
       return false;
     }
     try {
@@ -99,7 +140,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       if (rpcError) {
         if (rpcError.message?.includes('Insufficient credits')) {
-          setIsCreditAlertVisible(true);
+          setIsStoreVisible(true);
         } else {
           throw rpcError;
         }
@@ -145,23 +186,32 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         confirmText="OK"
       />
 
-      {/* User Guide Tutorial Modal */}
-      <HelpTutorialModal
-        isVisible={isHelpModalVisible}
-        onClose={() => setIsHelpModalVisible(false)}
+      {/* User Celebration Modal */}
+      <CelebrationModal
+        isVisible={isCelebrationVisible}
+        onClose={() => setIsCelebrationVisible(false)}
+      />
+
+      {/* Credit Store Modal */}
+      <StoreModal
+        isVisible={isStoreVisible}
+        onClose={() => setIsStoreVisible(false)}
+        onPurchaseSuccess={(addedAmount) => {
+          addCredits(addedAmount);
+          fetchCredits();
+        }}
       />
 
       {/* App Header */}
       <Header>
         <View style={styles.headerActions}>
-          <View style={styles.headerCredits}>
-            <Text style={styles.headerCreditsText}>🪙 {credits} Credits</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => setIsHelpModalVisible(true)}
-            style={[styles.headerBtn, { marginRight: Spacing.xs }]}
-          >
-            <Text style={styles.headerBtnText}>💡 Guide</Text>
+          <TouchableOpacity onPress={() => setIsStoreVisible(true)} style={styles.creditsPill}>
+            <Text style={styles.creditsText}>
+              🪙 {credits} {isSmallScreen ? "" : credits === 1 ? "Credit" : "Credits"}
+            </Text>
+            <View style={styles.addBtn}>
+              <Text style={styles.addBtnText}>+</Text>
+            </View>
           </TouchableOpacity>
           <TouchableOpacity onPress={logout} style={styles.headerBtn}>
             <Text style={styles.headerBtnText}>Log Out</Text>
@@ -221,6 +271,7 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   headerBtn: {
@@ -228,9 +279,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: BorderRadius.sm,
-  },
-  headerBtnPrimary: {
-    backgroundColor: Colors.brand.primary,
   },
   headerBtnText: {
     color: Colors.text.primary,
@@ -250,14 +298,36 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: Typography.size.base,
   },
-  headerCredits: {
-    justifyContent: "center",
-    paddingHorizontal: 8,
+  creditsPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(99, 102, 241, 0.1)",
+    borderRadius: BorderRadius.full,
+    paddingLeft: Spacing.sm,
+    paddingRight: Spacing.xs,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: "rgba(99, 102, 241, 0.25)",
   },
-  headerCreditsText: {
+  creditsText: {
     color: Colors.brand.primaryLight,
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.bold,
+    marginRight: 6,
+  },
+  addBtn: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.brand.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  addBtnText: {
+    color: Colors.white,
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.bold,
+    lineHeight: Platform.OS === 'ios' ? 18 : 16,
   },
 });
 
