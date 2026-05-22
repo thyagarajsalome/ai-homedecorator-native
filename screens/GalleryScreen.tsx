@@ -38,7 +38,7 @@ const MOCK_DESIGNS: DesignItem[] = [
 
 const GalleryScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   return (
-    <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom", "left", "right"]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backText}>← Back</Text>

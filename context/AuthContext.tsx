@@ -5,22 +5,23 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+import { Platform, View, ActivityIndicator } from "react-native";
 import { supabase } from "../lib/supabase";
 import { Session } from "@supabase/supabase-js";
 import * as Linking from "expo-linking";
-import {
-  identifyUser,
-  logoutUser,
-  initPurchases,
-} from "../services/purchaseService";
+import * as WebBrowser from "expo-web-browser";
+// 👇 Import the notification service
 // 👇 Import the notification service
 import { registerForPushNotificationsAsync } from "../services/notificationService";
+
+WebBrowser.maybeCompleteAuthSession();
 
 interface AuthContextType {
   isAuthenticated: boolean;
   session: Session | null;
   login: () => void;
   logout: () => void;
+  signInWithGoogle: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,8 +36,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     // Wrapper function to handle async initialization order
     const initializeApp = async () => {
       try {
-        // 1. Initialize RevenueCat FIRST
-        await initPurchases();
+
 
         // 2. Check active Supabase session
         const {
@@ -44,9 +44,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         } = await supabase.auth.getSession();
         setSession(session);
 
-        // 3. If user is logged in, link identity and register for notifications
+        // 2. If user is logged in, register for notifications
         if (session?.user) {
-          await identifyUser(session.user.id); //
           // 👇 Register notifications on app start if session exists
           registerForPushNotificationsAsync(session.user.id);
         }
@@ -66,13 +65,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
 
-      // Handle identity and notifications on auth changes
+      // Handle notifications on auth changes
       if (session?.user) {
-        await identifyUser(session.user.id); //
         // 👇 Register notifications whenever a user logs in
         registerForPushNotificationsAsync(session.user.id);
-      } else {
-        await logoutUser(); //
       }
     });
 
@@ -82,9 +78,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       if (url.includes("access_token") || url.includes("refresh_token")) {
         try {
-          const params = new URLSearchParams(url.split("#")[1]);
-          const accessToken = params.get("access_token");
-          const refreshToken = params.get("refresh_token");
+          const normalizedUrl = url.replace("#", "?");
+          const urlObj = new URL(normalizedUrl);
+          const accessToken = urlObj.searchParams.get("access_token");
+          const refreshToken = urlObj.searchParams.get("refresh_token");
 
           if (accessToken && refreshToken) {
             await supabase.auth.setSession({
@@ -115,8 +112,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const logout = async () => {
     try {
       await supabase.auth.signOut();
-      // Ensure logout from RevenueCat
-      await logoutUser();
+
     } catch (error) {
       console.log("Logout error:", error);
     } finally {
@@ -126,11 +122,67 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const login = () => {};
 
+  const signInWithGoogle = async () => {
+    try {
+      const redirectUrl = Linking.createURL("login");
+
+      if (Platform.OS === "web") {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: redirectUrl,
+          },
+        });
+        if (error) throw error;
+        return;
+      }
+
+      // Native (iOS/Android) secure browser popup flow
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.url) throw new Error("No URL returned from Supabase OAuth");
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+
+      if (result.type === "success" && result.url) {
+        const urlObj = new URL(result.url.replace("#", "?"));
+        const accessToken = urlObj.searchParams.get("access_token");
+        const refreshToken = urlObj.searchParams.get("refresh_token");
+
+        if (accessToken && refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (sessionError) throw sessionError;
+        }
+      }
+    } catch (error) {
+      console.error("Google Sign-In Error:", error);
+      throw error;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#0F172A", justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#6366F1" />
+      </View>
+    );
+  }
+
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated: !!session, session, login, logout }}
+      value={{ isAuthenticated: !!session, session, login, logout, signInWithGoogle }}
     >
-      {!isLoading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

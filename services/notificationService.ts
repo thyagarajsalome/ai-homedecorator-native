@@ -7,33 +7,37 @@ import { supabase } from "../lib/supabase";
 export async function registerForPushNotificationsAsync(userId: string) {
   if (Platform.OS === 'web' || !Device.isDevice) return;
 
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
 
-  if (existingStatus !== "granted") {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
+    if (existingStatus !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
 
-  if (finalStatus !== "granted") return;
+    if (finalStatus !== "granted") return;
 
-  const token = (
-    await Notifications.getExpoPushTokenAsync({
-      projectId: "19ed4d08-d954-435d-84bd-888f29d550dc", // Find this in app.json or Expo dashboard
-    })
-  ).data;
+    const token = (
+      await Notifications.getExpoPushTokenAsync({
+        projectId: "19ed4d08-d954-435d-84bd-888f29d550dc", // Find this in app.json or Expo dashboard
+      })
+    ).data;
 
-  // Save the token to your Supabase 'user_profiles' table
-  // Ensure you have a 'push_token' column (Text type) in that table
-  await supabase
-    .from("user_profiles")
-    .update({ push_token: token })
-    .eq("id", userId);
+    // Save the token to your Supabase 'user_profiles' table
+    // Ensure you have a 'push_token' column (Text type) in that table
+    await supabase
+      .from("user_profiles")
+      .update({ push_token: token })
+      .eq("id", userId);
 
-  if (Platform.OS === "android") {
-    Notifications.setNotificationChannelAsync("default", {
-      name: "default",
-      importance: Notifications.AndroidImportance.MAX,
-    });
+    if (Platform.OS === "android") {
+      Notifications.setNotificationChannelAsync("default", {
+        name: "default",
+        importance: Notifications.AndroidImportance.MAX,
+      });
+    }
+  } catch (error) {
+    console.error("Error registering for push notifications:", error);
   }
 }

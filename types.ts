@@ -1,9 +1,13 @@
-export interface Style {
+export interface SubCategoryChoice {
   name: string;
-  prompt: string;
+  promptSuffix: string;
+  thumbnail?: string;
 }
 
-export interface StyleCategory {
+export interface SelectionCategory {
+  id: string;
   name: string;
-  styles: Style[];
+  icon: string;
+  guardrail: string;
+  choices: SubCategoryChoice[];
 }

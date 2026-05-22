@@ -10,17 +10,34 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
+import { GoogleIcon } from "../components/Icons";
 
 const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { signInWithGoogle } = useAuth();
 
   // screens/SignUpScreen.tsx
+
+  const handleGoogleSignUp = async () => {
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (err: any) {
+      if (err.message && !err.message.includes("cancel")) {
+        Alert.alert("Google Sign Up Failed", err.message || "Could not sign up with Google.");
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleSignUp = async () => {
     if (!email || !password) {
@@ -34,9 +51,6 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         email,
         password,
         options: {
-          data: {
-            referral_code: inviteCode.trim(),
-          },
           // This tells Supabase to open your app after the user clicks the email link
           emailRedirectTo: "aihomedecoratornative://login",
         },
@@ -101,28 +115,40 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Invite Code (Optional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter 8-character code"
-                placeholderTextColor="#64748B"
-                value={inviteCode}
-                onChangeText={setInviteCode}
-                autoCapitalize="characters"
-                autoCorrect={false}
-              />
+
+            <TouchableOpacity
+              style={[styles.button, (loading || googleLoading) && styles.buttonDisabled]}
+              onPress={handleSignUp}
+              disabled={loading || googleLoading}
+              activeOpacity={0.8}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.buttonText}>Sign Up</Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.separatorContainer}>
+              <View style={styles.separatorLine} />
+              <Text style={styles.separatorText}>OR</Text>
+              <View style={styles.separatorLine} />
             </View>
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleSignUp}
-              disabled={loading}
+              style={[styles.googleButton, (loading || googleLoading) && styles.googleButtonDisabled]}
+              onPress={handleGoogleSignUp}
+              disabled={loading || googleLoading}
               activeOpacity={0.8}
             >
-              <Text style={styles.buttonText}>
-                {loading ? "Creating..." : "Sign Up"}
-              </Text>
+              {googleLoading ? (
+                <ActivityIndicator color="#F8FAFC" />
+              ) : (
+                <>
+                  <GoogleIcon style={styles.googleIcon} />
+                  <Text style={styles.googleButtonText}>Sign Up with Google</Text>
+                </>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -228,7 +254,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 12,
-    marginBottom: 24,
+    marginBottom: 16,
     shadowColor: "#6366F1",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
@@ -241,6 +267,45 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  separatorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 16,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#334155",
+  },
+  separatorText: {
+    color: "#64748B",
+    paddingHorizontal: 12,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  googleButton: {
+    flexDirection: "row",
+    backgroundColor: "#1E293B",
+    height: 56,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#334155",
+    marginBottom: 24,
+  },
+  googleButtonDisabled: {
+    opacity: 0.5,
+    backgroundColor: "#0F172A",
+  },
+  googleIcon: {
+    marginRight: 12,
+  },
+  googleButtonText: {
+    color: "#F8FAFC",
     fontSize: 16,
     fontWeight: "700",
   },

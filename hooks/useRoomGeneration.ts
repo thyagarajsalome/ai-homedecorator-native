@@ -27,14 +27,11 @@ export const useRoomGeneration = () => {
 
     try {
       const result = await geminiService.decorateRoom(imageUri, prompt, roomType);
-      setGeneratedImageUrl(result);
+      setGeneratedImageUrl(result.generatedImage);
 
-      // Backend currently returns a single generatedImage URL.
-      // hdCleanImage is the same image at this stage — it will be
-      // swapped for a true HD clean URL when the backend supports it.
       return {
-        generatedImage: result,
-        hdCleanImage: result,
+        generatedImage: result.generatedImage,
+        hdCleanImage: result.hdCleanImage,
       };
     } catch (e: any) {
       const errorMessage = e.message || 'An unknown error occurred.';

@@ -1,26 +1,29 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Dimensions, Image, Text } from 'react-native';
+import React from 'react';
+import { View, StyleSheet, Dimensions, Image, Text, ImageSourcePropType } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-// Calculate image size based on screen width minus padding (32 on each side)
-const IMAGE_SIZE = SCREEN_WIDTH - 64; 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+// Calculate image size based on screen width minus padding, capped by height to fit small devices
+const IMAGE_SIZE = Math.min(SCREEN_WIDTH - 64, SCREEN_HEIGHT * 0.42, 340); 
 
 interface BeforeAfterSliderProps {
-  beforeImage: string;
-  afterImage: string;
+  beforeImage: ImageSourcePropType;
+  afterImage: ImageSourcePropType;
 }
 
 export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ beforeImage, afterImage }) => {
+  const startX = useSharedValue(IMAGE_SIZE / 2);
   const position = useSharedValue(IMAGE_SIZE / 2);
 
   const panGesture = Gesture.Pan()
+    .onStart(() => {
+      startX.value = position.value;
+    })
     .onUpdate((e) => {
-      // Keep the slider within the image bounds
-      if (e.x >= 0 && e.x <= IMAGE_SIZE) {
-        position.value = e.x;
-      }
+      // Keep the slider within the image bounds smoothly
+      const val = startX.value + e.translationX;
+      position.value = Math.min(Math.max(val, 0), IMAGE_SIZE);
     });
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -35,14 +38,14 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ beforeImag
     <View style={[styles.container, { width: IMAGE_SIZE, height: IMAGE_SIZE }]}>
       
       {/* Bottom Image (Before) */}
-      <Image source={{ uri: beforeImage }} style={styles.fullImage} />
+      <Image source={beforeImage} style={styles.fullImage} />
       <View style={[styles.badge, styles.badgeRight]}>
         <Text style={styles.badgeText}>Original</Text>
       </View>
 
       {/* Top Image (After - Clipped via Reanimated) */}
       <Animated.View style={[styles.clippedView, animatedStyle]}>
-        <Image source={{ uri: afterImage }} style={styles.fullImage} />
+        <Image source={afterImage} style={styles.fullImage} />
         <View style={[styles.badge, styles.badgeLeft]}>
           <Text style={styles.badgeText}>AI Design</Text>
         </View>
@@ -142,3 +145,5 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
   },
 });
+
+export default BeforeAfterSlider;

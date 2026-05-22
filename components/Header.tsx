@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import { View, Text, StyleSheet, Image, Platform } from "react-native";
+import { View, Text, StyleSheet, Image, StatusBar, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 
@@ -9,9 +9,10 @@ type HeaderProps = {
 
 const Header: React.FC<HeaderProps> = ({ children }) => {
   const insets = useSafeAreaInsets();
+  const statusBarHeight = insets.top > 0 ? insets.top : (Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 20);
 
   return (
-    <BlurView intensity={80} tint="dark" style={[styles.header, { paddingTop: insets.top }]}>
+    <BlurView intensity={80} tint="dark" style={[styles.header, { paddingTop: statusBarHeight }]}>
       <View style={styles.headerNav}>
         <View style={styles.headerLogoContainer}>
           {/* Updated to use your provided logo */}

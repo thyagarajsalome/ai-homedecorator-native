@@ -20,6 +20,7 @@ import { supabase } from "../lib/supabase";
 import Loader from "../components/Loader";
 import Header from "../components/Header";
 import { CustomAlertModal } from "../components/CustomAlertModal";
+import { HelpTutorialModal } from "../components/HelpTutorialModal";
 
 // Workspace Sub-Components (extracted from HomeScreen for clean architecture)
 import ImageUploader from "../components/workspace/ImageUploader";
@@ -39,11 +40,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // Phase State
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [isCreditAlertVisible, setIsCreditAlertVisible] = useState(false);
+  const [isHelpModalVisible, setIsHelpModalVisible] = useState(false);
 
   // Premium HD tracking
   const [activeDisplayImage, setActiveDisplayImage] = useState<string | null>(null);
   const [premiumHdBackupUrl, setPremiumHdBackupUrl] = useState<string | null>(null);
   const [hasUnlockedPremiumHd, setHasUnlockedPremiumHd] = useState(false);
+  const [generationStyleName, setGenerationStyleName] = useState<string>("Modern");
 
   // Auth & Business Logic
   const { session, logout } = useAuth();
@@ -67,12 +70,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     resetGeneration();
   };
 
-  const handleGenerate = async (prompt: string, roomType: string, cost: number) => {
+  const handleGenerate = async (prompt: string, roomType: string, cost: number, styleName: string) => {
     if (credits < cost) {
       setIsCreditAlertVisible(true);
       return;
     }
 
+    setGenerationStyleName(styleName);
     const result = await generateDesign(sourceImage!, prompt, roomType);
 
     if (result !== false) {
@@ -88,26 +92,26 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       return false;
     }
     try {
-      const { data, error: profileError } = await supabase
-        .from("user_profiles")
-        .select("generation_credits")
-        .eq("id", session?.user?.id)
-        .single();
+      // Call the secure server-side RPC to check and deduct 1 credit
+      const { data, error: rpcError } = await supabase.rpc('secure_deduct_credits', { 
+        cost_amount: 1 
+      });
 
-      if (profileError) throw profileError;
-      if (data.generation_credits < 1) {
-        setIsCreditAlertVisible(true);
+      if (rpcError) {
+        if (rpcError.message?.includes('Insufficient credits')) {
+          setIsCreditAlertVisible(true);
+        } else {
+          throw rpcError;
+        }
         return false;
       }
 
-      const { error: updateError } = await supabase
-        .from("user_profiles")
-        .update({ generation_credits: data.generation_credits - 1 })
-        .eq("id", session?.user?.id);
-
-      if (updateError) throw updateError;
-
-      deductCredits(1);
+      // Sync local credits state
+      if (data && typeof data.current_credits === 'number') {
+        fetchCredits(); // Fetch latest from DB to ensure sync
+      } else {
+        deductCredits(1);
+      }
 
       if (premiumHdBackupUrl) {
         setActiveDisplayImage(premiumHdBackupUrl);
@@ -135,23 +139,29 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       <CustomAlertModal
         visible={isCreditAlertVisible}
         title="Out of Credits"
-        message="You need more credits to continue decorating. Grab a pack now!"
+        message="Your free 2-generation registration allowance has been fully exhausted."
         onCancel={() => setIsCreditAlertVisible(false)}
-        onConfirm={() => {
-          setIsCreditAlertVisible(false);
-          navigation.navigate("BuyCredits");
-        }}
-        confirmText="GET CREDITS"
+        onConfirm={() => setIsCreditAlertVisible(false)}
+        confirmText="OK"
+      />
+
+      {/* User Guide Tutorial Modal */}
+      <HelpTutorialModal
+        isVisible={isHelpModalVisible}
+        onClose={() => setIsHelpModalVisible(false)}
       />
 
       {/* App Header */}
       <Header>
         <View style={styles.headerActions}>
+          <View style={styles.headerCredits}>
+            <Text style={styles.headerCreditsText}>🪙 {credits} Credits</Text>
+          </View>
           <TouchableOpacity
-            onPress={() => navigation.navigate("Referral")}
-            style={[styles.headerBtn, styles.headerBtnPrimary]}
+            onPress={() => setIsHelpModalVisible(true)}
+            style={[styles.headerBtn, { marginRight: Spacing.xs }]}
           >
-            <Text style={styles.headerBtnText}>🎁 Free Credits</Text>
+            <Text style={styles.headerBtnText}>💡 Guide</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={logout} style={styles.headerBtn}>
             <Text style={styles.headerBtnText}>Log Out</Text>
@@ -176,6 +186,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             sourceImage={sourceImage}
             generatedImage={activeDisplayImage}
             hasUnlockedHd={hasUnlockedPremiumHd}
+            styleName={generationStyleName}
             onReset={handleResetWorkspace}
             onRemoveWatermark={handleRemoveWatermark}
           />
@@ -183,7 +194,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           /* Phase 1: Upload */
           <>
             <ImageUploader onImageSelected={setSourceImage} />
-            <InspirationGallery />
+            <InspirationGallery onSelectPreset={setSourceImage} />
           </>
         ) : (
           /* Phase 2: Configure */
@@ -191,7 +202,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             sourceImage={sourceImage}
             credits={credits}
             onReset={handleResetWorkspace}
-            onBuyCreditsNavigate={() => navigation.navigate("BuyCredits")}
             onGenerate={handleGenerate}
           />
         )}
@@ -239,6 +249,15 @@ const styles = StyleSheet.create({
     color: Colors.semantic.error,
     textAlign: "center",
     fontSize: Typography.size.base,
+  },
+  headerCredits: {
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+  headerCreditsText: {
+    color: Colors.brand.primaryLight,
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.bold,
   },
 });
 
