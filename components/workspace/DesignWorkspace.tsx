@@ -28,35 +28,36 @@ interface DesignWorkspaceProps {
 
 
 const CATEGORY_TIPS: Record<string, { title: string; message: string }> = {
+  full_redesign: {
+    title: "Full Room Design Guide 🌍",
+    message: "Try to take a wide-angle photo of the room from a corner or doorway to capture the entire layout."
+  },
+  space_remodel: {
+    title: "Kitchen & Bath Guide 🍳",
+    message: "Try to take the photo from a corner to capture the full kitchen or bathroom space."
+  },
   flooring: {
-    title: "Flooring Capture Guide 🪵",
+    title: "Flooring Guide 🪵",
     message: "Make sure the photo is covering the maximum floor area possible."
   },
   wall_paint: {
-    title: "Wall Paint Capture Guide 🎨",
+    title: "Wall Paint Guide 🎨",
     message: "Try to take a photo of a wall that is clearly visible in natural daylight."
   },
-  windows_blinds: {
-    title: "Windows & Blinds Capture Guide 🪟",
-    message: "Try to cover only the window and blinds from a good distance."
-  },
   lighting_mood: {
-    title: "Lighting & Mood Capture Guide 💡",
+    title: "Lighting Guide 💡",
     message: "Make sure you take the photo from a good distance at eye level."
   },
+  windows_blinds: {
+    title: "Window & Blinds Guide 🪟",
+    message: "Try to cover only the window and blinds from a good distance."
+  },
   outdoor_patio: {
-    title: "Outdoor & Patio Capture Guide 🏡",
+    title: "Outdoor Guide 🏡",
     message: "Try to capture the entire deck, patio, or outdoor area from a wider angle."
-  },
-  space_remodel: {
-    title: "Kitchen & Bath Capture Guide 🍳",
-    message: "Try to take the photo from a corner to capture the full kitchen or bathroom space."
-  },
-  full_redesign: {
-    title: "Full Room Redesign Guide 🌍",
-    message: "Try to take a wide-angle photo of the room from a corner or doorway to capture the entire layout."
   }
 };
+
 
 const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
   sourceImage,

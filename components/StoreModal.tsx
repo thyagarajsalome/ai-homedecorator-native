@@ -35,14 +35,14 @@ const PACKAGES: CreditPackage[] = [
     id: "starter",
     name: "Starter Pack",
     credits: 5,
-    price: "$4.99",
+    price: "Rs. 249",
     description: "Ideal for testing new room styles quickly.",
   },
   {
     id: "pro",
     name: "Pro Pack",
     credits: 15,
-    price: "$9.99",
+    price: "Rs. 499",
     popular: true,
     description: "Best choice for complete home transformations.",
   },
@@ -50,7 +50,7 @@ const PACKAGES: CreditPackage[] = [
     id: "elite",
     name: "Elite Pack",
     credits: 50,
-    price: "$24.99",
+    price: "Rs. 1,249",
     bestValue: true,
     description: "For design professionals and heavy creators.",
   },
@@ -101,7 +101,7 @@ export const StoreModal: React.FC<StoreModalProps> = ({
       setIsPurchasing(false);
       onPurchaseSuccess(pkg.credits);
       Alert.alert(
-        "Purchase Successful! 🪙",
+        "Purchase Successful! ✅",
         `Successfully loaded ${pkg.credits} credits to your account. Your new balance is ready.`
       );
       onClose();
@@ -131,7 +131,7 @@ export const StoreModal: React.FC<StoreModalProps> = ({
         <View style={styles.modalContent}>
           {/* Close Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Top Up Credits 🪙</Text>
+            <Text style={styles.headerTitle}>Top Up Credits</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} disabled={isPurchasing}>
               <Text style={styles.closeBtnText}>✕</Text>
             </TouchableOpacity>
@@ -173,13 +173,22 @@ export const StoreModal: React.FC<StoreModalProps> = ({
                     </View>
                   )}
 
+                  {/* Green Tick Mark Column */}
+                  <View style={styles.greenTickCircle}>
+                    <Text style={styles.greenTickText}>✓</Text>
+                  </View>
+
+                  {/* Info Column */}
                   <View style={styles.pkgInfo}>
                     <Text style={styles.pkgName}>{pkg.name}</Text>
+                    <Text style={styles.pkgCreditsInfo}>
+                      {pkg.credits} Credits • Design {pkg.credits} times
+                    </Text>
                     <Text style={styles.pkgDescription}>{pkg.description}</Text>
                   </View>
 
+                  {/* Price Column */}
                   <View style={styles.pkgPriceSection}>
-                    <Text style={styles.pkgCredits}>🪙 {pkg.credits}</Text>
                     <Text style={styles.pkgPriceText}>{pkg.price}</Text>
                   </View>
                 </TouchableOpacity>
@@ -339,15 +348,31 @@ const styles = StyleSheet.create({
   pkgPriceSection: {
     alignItems: "flex-end",
   },
-  pkgCredits: {
-    color: "#FFD700", // Gold color
-    fontSize: Typography.size.lg,
-    fontWeight: Typography.weight.black,
-    marginBottom: 2,
+  pkgCreditsInfo: {
+    color: "#10B981", // Green/Teal accent color
+    fontSize: Typography.size.sm + 1,
+    fontWeight: Typography.weight.bold,
+    marginBottom: 4,
   },
   pkgPriceText: {
     color: Colors.text.primary,
     fontSize: Typography.size.base,
+    fontWeight: Typography.weight.bold,
+  },
+  greenTickCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(16, 185, 129, 0.12)",
+    borderWidth: 1.5,
+    borderColor: "#10B981",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: Spacing.md,
+  },
+  greenTickText: {
+    color: "#10B981",
+    fontSize: 11,
     fontWeight: Typography.weight.bold,
   },
   actionContainer: {
