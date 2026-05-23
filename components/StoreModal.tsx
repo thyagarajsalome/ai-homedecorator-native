@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import Purchases, { PURCHASE_TYPE } from "react-native-purchases";
+import * as Notifications from "expo-notifications";
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from "../theme/designTokens";
 import { supabase } from "../lib/supabase";
 
@@ -118,9 +119,25 @@ export const StoreModal: React.FC<StoreModalProps> = ({
         console.warn("DB credits RPC failed, using client-side fallback:", error);
         setIsPurchasing(false);
         onPurchaseSuccess(pkg.credits);
+
+        if (Platform.OS !== "web") {
+          try {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: "Purchase Successful! 🎉",
+                body: `Thanks for purchasing! Your account has been credited with ${pkg.credits} credits.`,
+                sound: true,
+              },
+              trigger: null,
+            });
+          } catch (notifErr) {
+            console.error("Local notification failed:", notifErr);
+          }
+        }
+
         Alert.alert(
           "Purchase Successful! ✨",
-          `Successfully loaded ${pkg.credits} credits to your session (Local Sandbox Mock). Ready to design!`
+          `Thanks for purchasing! Your account has been credited with ${pkg.credits} credits.`
         );
         onClose();
         return;
@@ -128,9 +145,25 @@ export const StoreModal: React.FC<StoreModalProps> = ({
 
       setIsPurchasing(false);
       onPurchaseSuccess(pkg.credits);
+
+      if (Platform.OS !== "web") {
+        try {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Purchase Successful! 🎉",
+              body: `Thanks for purchasing! Your account has been credited with ${pkg.credits} credits.`,
+              sound: true,
+            },
+            trigger: null,
+          });
+        } catch (notifErr) {
+          console.error("Local notification failed:", notifErr);
+        }
+      }
+
       Alert.alert(
         "Purchase Successful! ✅",
-        `Successfully loaded ${pkg.credits} credits to your account. Your new balance is ready.`
+        `Thanks for purchasing! Your account has been credited with ${pkg.credits} credits.`
       );
       onClose();
     } catch (err: any) {
