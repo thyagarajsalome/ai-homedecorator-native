@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import Purchases from "react-native-purchases";
+import Purchases, { PURCHASE_TYPE } from "react-native-purchases";
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from "../theme/designTokens";
 import { supabase } from "../lib/supabase";
 
@@ -71,7 +71,7 @@ export const StoreModal: React.FC<StoreModalProps> = ({
     if (isVisible && Platform.OS === "android") {
       const fetchRCProducts = async () => {
         try {
-          const products = await Purchases.getProducts(["5_credits", "15_credits", "50_credits"]);
+          const products = await Purchases.getProducts(["5_credits", "15_credits", "50_credits"], PURCHASE_TYPE.INAPP);
           setRcProducts(products);
         } catch (e) {
           console.error("Failed to fetch RevenueCat products:", e);
@@ -102,8 +102,8 @@ export const StoreModal: React.FC<StoreModalProps> = ({
             ? "15_credits"
             : "50_credits";
 
-        // Open Google Pay Checkout Sheet via RevenueCat directly by ID to avoid pre-fetch caching issues
-        await Purchases.purchaseProduct(rcId);
+        // Open Google Pay Checkout Sheet via RevenueCat directly by ID as an in-app product to avoid pre-fetch caching issues
+        await Purchases.purchaseProduct(rcId, null, PURCHASE_TYPE.INAPP);
       } else {
         // Fallback for Web/Simulators (simulate billing delay)
         await new Promise((resolve) => setTimeout(resolve, 1500));
