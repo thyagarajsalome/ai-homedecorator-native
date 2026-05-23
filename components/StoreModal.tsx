@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   StyleSheet,
@@ -8,9 +8,11 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import Purchases from "react-native-purchases";
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from "../theme/designTokens";
 import { supabase } from "../lib/supabase";
 
@@ -63,6 +65,21 @@ export const StoreModal: React.FC<StoreModalProps> = ({
 }) => {
   const [selectedPkgId, setSelectedPkgId] = useState<string>("pro");
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [rcProducts, setRcProducts] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isVisible && Platform.OS === "android") {
+      const fetchRCProducts = async () => {
+        try {
+          const products = await Purchases.getProducts(["5_credits", "15_credits", "50_credits"]);
+          setRcProducts(products);
+        } catch (e) {
+          console.error("Failed to fetch RevenueCat products:", e);
+        }
+      };
+      fetchRCProducts();
+    }
+  }, [isVisible]);
 
   const handleSelectPackage = (id: string) => {
     Haptics.selectionAsync();
@@ -77,17 +94,35 @@ export const StoreModal: React.FC<StoreModalProps> = ({
     setIsPurchasing(true);
 
     try {
-      // Simulate network / payment processing delay (1.5 seconds)
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      if (Platform.OS === "android") {
+        const rcId =
+          pkg.id === "starter"
+            ? "5_credits"
+            : pkg.id === "pro"
+            ? "15_credits"
+            : "50_credits";
 
-      // Attempt remote Supabase DB credit addition
+        // 1. Fetch fresh products from Google Play / RevenueCat to ensure accurate mapping
+        const products = await Purchases.getProducts([rcId]);
+        const product = products.find((p) => p.identifier === rcId);
+        if (!product) {
+          throw new Error(`Product ${rcId} not found in RevenueCat.`);
+        }
+
+        // 2. Open Google Pay Checkout Sheet via RevenueCat
+        await Purchases.purchaseStoreProduct(product);
+      } else {
+        // Fallback for Web/Simulators (simulate billing delay)
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+
+      // 3. Increment credits in Supabase DB
       const { data, error } = await supabase.rpc("secure_add_credits", {
         credit_amount: pkg.credits,
       });
 
       if (error) {
         console.warn("DB credits RPC failed, using client-side fallback:", error);
-        // Fallback: Continue with local mock success so user can continue testing
         setIsPurchasing(false);
         onPurchaseSuccess(pkg.credits);
         Alert.alert(
@@ -107,14 +142,21 @@ export const StoreModal: React.FC<StoreModalProps> = ({
       onClose();
     } catch (err: any) {
       setIsPurchasing(false);
-      console.error("Purchase error:", err);
-      // Fallback checkout success anyway to allow seamless testing
-      onPurchaseSuccess(pkg.credits);
-      Alert.alert(
-        "Purchase Sandbox Sim ✨",
-        `Simulated purchase of ${pkg.credits} credits completed. Happy designing!`
-      );
-      onClose();
+      console.error("Purchase error details:", err);
+
+      // Gracefully handle standard user checkout cancellations
+      const isCancelled =
+        err.userCancelled ||
+        err.code === 1 || // Purchases.PURCHASES_ERROR_CODE.purchaseCancelledError
+        err.message?.toLowerCase().includes("cancelled") ||
+        err.message?.toLowerCase().includes("user cancel");
+
+      if (!isCancelled) {
+        Alert.alert(
+          "Purchase Failed",
+          `An error occurred during payment: ${err.message || err}`
+        );
+      }
     }
   };
 
@@ -189,7 +231,17 @@ export const StoreModal: React.FC<StoreModalProps> = ({
 
                   {/* Price Column */}
                   <View style={styles.pkgPriceSection}>
-                    <Text style={styles.pkgPriceText}>{pkg.price}</Text>
+                    <Text style={styles.pkgPriceText}>
+                      {rcProducts.find(
+                        (p) =>
+                          p.identifier ===
+                          (pkg.id === "starter"
+                            ? "5_credits"
+                            : pkg.id === "pro"
+                            ? "15_credits"
+                            : "50_credits")
+                      )?.priceString || pkg.price}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               );

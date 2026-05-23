@@ -10,7 +10,7 @@ import { supabase } from "../lib/supabase";
 import { Session } from "@supabase/supabase-js";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
-// 👇 Import the notification service
+import Purchases from "react-native-purchases";
 // 👇 Import the notification service
 import { registerForPushNotificationsAsync } from "../services/notificationService";
 
@@ -44,10 +44,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         } = await supabase.auth.getSession();
         setSession(session);
 
-        // 2. If user is logged in, register for notifications
+        // 2. If user is logged in, register for notifications and RevenueCat
         if (session?.user) {
           // 👇 Register notifications on app start if session exists
           registerForPushNotificationsAsync(session.user.id);
+          if (Platform.OS === "android") {
+            try {
+              await Purchases.logIn(session.user.id);
+            } catch (e) {
+              console.error("RevenueCat logIn error on app start:", e);
+            }
+          }
         }
       } catch (error) {
         console.error("Initialization error:", error);
@@ -65,10 +72,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
 
-      // Handle notifications on auth changes
+      // Handle notifications and RevenueCat login on auth changes
       if (session?.user) {
         // 👇 Register notifications whenever a user logs in
         registerForPushNotificationsAsync(session.user.id);
+        if (Platform.OS === "android") {
+          try {
+            await Purchases.logIn(session.user.id);
+          } catch (e) {
+            console.error("RevenueCat logIn error on auth change:", e);
+          }
+        }
       }
     });
 
@@ -111,8 +125,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const logout = async () => {
     try {
+      if (Platform.OS === "android") {
+        try {
+          await Purchases.logOut();
+        } catch (e) {
+          console.error("RevenueCat logOut error:", e);
+        }
+      }
       await supabase.auth.signOut();
-
     } catch (error) {
       console.log("Logout error:", error);
     } finally {
