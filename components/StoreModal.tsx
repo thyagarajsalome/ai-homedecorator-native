@@ -102,15 +102,8 @@ export const StoreModal: React.FC<StoreModalProps> = ({
             ? "15_credits"
             : "50_credits";
 
-        // 1. Fetch fresh products from Google Play / RevenueCat to ensure accurate mapping
-        const products = await Purchases.getProducts([rcId]);
-        const product = products.find((p) => p.identifier === rcId);
-        if (!product) {
-          throw new Error(`Product ${rcId} not found in RevenueCat.`);
-        }
-
-        // 2. Open Google Pay Checkout Sheet via RevenueCat
-        await Purchases.purchaseStoreProduct(product);
+        // Open Google Pay Checkout Sheet via RevenueCat directly by ID to avoid pre-fetch caching issues
+        await Purchases.purchaseProduct(rcId);
       } else {
         // Fallback for Web/Simulators (simulate billing delay)
         await new Promise((resolve) => setTimeout(resolve, 1500));
