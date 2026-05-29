@@ -13,8 +13,18 @@ import * as WebBrowser from "expo-web-browser";
 import Purchases from "react-native-purchases";
 // 👇 Import the notification service
 import { registerForPushNotificationsAsync } from "../services/notificationService";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID } from "@env";
 
 WebBrowser.maybeCompleteAuthSession();
+
+if (GOOGLE_WEB_CLIENT_ID) {
+  GoogleSignin.configure({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
+    offlineAccess: true,
+  });
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -144,9 +154,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const signInWithGoogle = async () => {
     try {
-      const redirectUrl = Linking.createURL("login");
-
-      if (Platform.OS === "web") {
+      if (Platform.OS === "web" || !GOOGLE_WEB_CLIENT_ID) {
+        const redirectUrl = Linking.createURL("login");
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
@@ -157,33 +166,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         return;
       }
 
-      // Native (iOS/Android) secure browser popup flow
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      // Native flow using Google Sign-In
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo.data?.idToken;
+
+      if (!idToken) {
+        throw new Error("No ID token returned from Google Sign-In");
+      }
+
+      const { error } = await supabase.auth.signInWithIdToken({
         provider: "google",
-        options: {
-          redirectTo: redirectUrl,
-          skipBrowserRedirect: true,
-        },
+        token: idToken,
       });
 
       if (error) throw error;
-      if (!data?.url) throw new Error("No URL returned from Supabase OAuth");
-
-      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-
-      if (result.type === "success" && result.url) {
-        const urlObj = new URL(result.url.replace("#", "?"));
-        const accessToken = urlObj.searchParams.get("access_token");
-        const refreshToken = urlObj.searchParams.get("refresh_token");
-
-        if (accessToken && refreshToken) {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (sessionError) throw sessionError;
-        }
-      }
     } catch (error) {
       console.error("Google Sign-In Error:", error);
       throw error;

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ai Home Decorator",
     "slug": "AiHomeDecoratorNative",
-    "version": "1.0.0",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "aihomedecoratornative",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.aihomedecorator.twa",
-      "versionCode": 9,
+      "versionCode": 60,
       "adaptiveIcon": {
         "monochromeImage": "./assets/images/android-icon-monochrome.png",
         "backgroundColor": "#ffffff"
@@ -78,7 +78,8 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,
