@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const Replicate = require('replicate');
 const { createClient } = require('@supabase/supabase-js');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
 const sharp = require('sharp'); 
 
 // Native Node modules for FFmpeg video processing
@@ -37,11 +38,12 @@ app.use(cors());
 app.use(express.json({ limit: '15mb' })); // Slightly increased limit for buffer handling
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const geminiApiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(geminiApiKey);
+const googleGenAIClient = new GoogleGenAI({ apiKey: geminiApiKey });
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -102,7 +104,7 @@ async function createMorphVideo(sourceBuffer, generatedBuffer) {
     await fs.writeFile(genPath, generatedBuffer);
 
     // Xfade Wipe Right Transition (3 Seconds Total)
-    const ffmpegCommand = `ffmpeg -loop 1 -t 2 -i ${sourcePath} -loop 1 -t 2 -i ${genPath} -filter_complex "[0][1]xfade=transition=wiperight:duration=1:offset=1,format=yuv420p" -c:v libx264 -preset veryfast -crf 28 -y ${outputPath}`;
+    const ffmpegCommand = `ffmpeg -loop 1 -t 2 -i "${sourcePath}" -loop 1 -t 2 -i "${genPath}" -filter_complex "[0][1]xfade=transition=wiperight:duration=1:offset=1,format=yuv420p" -c:v libx264 -preset veryfast -crf 28 -y "${outputPath}"`;
 
     console.log(`Starting FFmpeg render for session: ${sessionId}`);
     await execPromise(ffmpegCommand);
@@ -192,11 +194,12 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
       }
     }
 
-    // STEP 2: REPLICATE GENERATION
+    // STEP 2: IMAGE GENERATION (REPLICATE OR FREE GEMINI IMAGEN FALLBACK)
     let generatedImageBase64 = null;
 
     if (REPLICATE_API_TOKEN) {
       try {
+        console.log('Using Replicate (FLUX) for image generation...');
         const replicate = new Replicate({ auth: REPLICATE_API_TOKEN });
         const inputOptions = {
           prompt: finalPrompt,
@@ -221,6 +224,29 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
         }
       } catch (replicateErr) {
         console.error('Replicate generation failed:', replicateErr.message);
+      }
+    }
+
+    // Fallback to Google AI Studio Imagen 3 if Replicate is not configured or failed
+    if (!generatedImageBase64 && geminiApiKey) {
+      try {
+        console.log('Using Google AI Studio Imagen 3 (Free Tier) for image generation...');
+        const response = await googleGenAIClient.models.generateImages({
+          model: 'imagen-3.0-generate-002',
+          prompt: finalPrompt,
+          config: {
+            numberOfImages: 1,
+            outputMimeType: 'image/jpeg',
+            aspectRatio: '1:1',
+          },
+        });
+
+        if (response && response.generatedImages && response.generatedImages[0]?.image?.imageBytes) {
+          const base64Data = response.generatedImages[0].image.imageBytes;
+          generatedImageBase64 = `data:image/jpeg;base64,${base64Data}`;
+        }
+      } catch (geminiGenErr) {
+        console.error('Google AI Studio Imagen generation failed:', geminiGenErr.message);
       }
     }
 
@@ -286,12 +312,18 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
     // STEP 4: GENERATE VIRAL VIDEO & DELIVER PAYLOADS
     console.log('Generating viral transition video...');
     
-    // Convert source upload to standard jpeg buffer for FFmpeg compatibility
-    const sourceJpegBuffer = await sharp(file.buffer).jpeg().toBuffer();
-    
     // We use the watermarked buffer for the video so the brand travels with it
     const videoBufferTarget = cloudProcessedWatermarkedBuffer || Buffer.from(generatedImageBase64.replace(/^data:image\/\w+;base64,/, ""), 'base64');
-    
+
+    // Get target dimensions for matching resolutions in the transition video
+    const targetMetadata = await sharp(videoBufferTarget).metadata();
+
+    // Convert source upload to standard jpeg buffer and resize to target dimensions for FFmpeg compatibility
+    const sourceJpegBuffer = await sharp(file.buffer)
+      .resize(targetMetadata.width, targetMetadata.height, { fit: 'fill' })
+      .jpeg()
+      .toBuffer();
+
     const viralVideoBase64 = await createMorphVideo(sourceJpegBuffer, videoBufferTarget);
 
     console.log('Dispensing complete asset payload.');
