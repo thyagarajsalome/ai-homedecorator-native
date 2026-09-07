@@ -194,43 +194,14 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
       }
     }
 
-    // STEP 2: IMAGE GENERATION (REPLICATE OR FREE GEMINI IMAGEN FALLBACK)
+    // STEP 2: IMAGE GENERATION (PRIMARY: GOOGLE AI IMAGEN 3 FREE TIER -> SECONDARY: REPLICATE FLUX)
     let generatedImageBase64 = null;
+    let engineUsed = "none";
 
-    if (REPLICATE_API_TOKEN) {
+    // 1. PRIMARY: Try Google AI Studio Free Tier (Imagen 3) first
+    if (geminiApiKey) {
       try {
-        console.log('Using Replicate (FLUX) for image generation...');
-        const replicate = new Replicate({ auth: REPLICATE_API_TOKEN });
-        const inputOptions = {
-          prompt: finalPrompt,
-          image: base64Image,
-          negative_prompt: NEGATIVE_PROMPT,
-          guidance_scale: 3.5,
-          prompt_strength: 0.8, 
-          num_inference_steps: 28,
-          output_format: "webp"
-        };
-
-        const output = await replicate.run(IMAGE_MODEL, { input: inputOptions });
-
-        if (output && Array.isArray(output) && output[0]) {
-          const imageResponse = await fetch(output[0]);
-          const arrayBuffer = await imageResponse.arrayBuffer();
-          generatedImageBase64 = `data:image/webp;base64,${Buffer.from(arrayBuffer).toString('base64')}`;
-        } else if (output && typeof output === 'string') {
-          const imageResponse = await fetch(output);
-          const arrayBuffer = await imageResponse.arrayBuffer();
-          generatedImageBase64 = `data:image/webp;base64,${Buffer.from(arrayBuffer).toString('base64')}`;
-        }
-      } catch (replicateErr) {
-        console.error('Replicate generation failed:', replicateErr.message);
-      }
-    }
-
-    // Fallback to Google AI Studio Imagen 3 if Replicate is not configured or failed
-    if (!generatedImageBase64 && geminiApiKey) {
-      try {
-        console.log('Using Google AI Studio Imagen 3 (Free Tier) for image generation...');
+        console.log('⚡ Attempting PRIMARY: Google AI (Imagen 3 Free Tier)...');
         const response = await googleGenAIClient.models.generateImages({
           model: 'imagen-3.0-generate-002',
           prompt: finalPrompt,
@@ -244,9 +215,50 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
         if (response && response.generatedImages && response.generatedImages[0]?.image?.imageBytes) {
           const base64Data = response.generatedImages[0].image.imageBytes;
           generatedImageBase64 = `data:image/jpeg;base64,${base64Data}`;
+          engineUsed = "google-imagen-3-free";
+          console.log('✅ Google AI Studio (Free Tier) successfully generated image!');
         }
       } catch (geminiGenErr) {
-        console.error('Google AI Studio Imagen generation failed:', geminiGenErr.message);
+        console.warn('⚠️ Google AI Studio Free Tier unavailable or limit reached:', geminiGenErr.message || geminiGenErr);
+        console.log('🔄 Seamlessly switching to SECONDARY: Replicate (FLUX)...');
+      }
+    }
+
+    // 2. SECONDARY / FALLBACK: Replicate (FLUX) only if Google Free Tier is exhausted or fails
+    if (!generatedImageBase64 && REPLICATE_API_TOKEN) {
+      try {
+        console.log('🚀 Using SECONDARY: Replicate (FLUX)...');
+        const replicate = new Replicate({ auth: REPLICATE_API_TOKEN });
+        const inputOptions = {
+          image: base64Image,
+          prompt: finalPrompt,
+          a_prompt: 'best quality, extremely detailed, photo from pinterest, interior design magazine, photorealistic, 8k',
+          n_prompt: NEGATIVE_PROMPT,
+          scale: 9, // strict adherence to prompt
+          ddim_steps: 30,
+          image_resolution: "512",
+          detect_resolution: 512
+        };
+
+        const output = await replicate.run(IMAGE_MODEL, { input: inputOptions });
+
+        if (output && Array.isArray(output) && output.length > 0) {
+          const finalOutput = output[output.length - 1]; // Get the last image
+          const imageUrl = typeof finalOutput.url === 'function' ? finalOutput.url().toString() : finalOutput.toString();
+          const imageResponse = await fetch(imageUrl);
+          const arrayBuffer = await imageResponse.arrayBuffer();
+          generatedImageBase64 = `data:image/webp;base64,${Buffer.from(arrayBuffer).toString('base64')}`;
+          engineUsed = "replicate-flux";
+          console.log('✅ Replicate FLUX generated fallback image successfully!');
+        } else if (output && typeof output === 'string') {
+          const imageResponse = await fetch(output);
+          const arrayBuffer = await imageResponse.arrayBuffer();
+          generatedImageBase64 = `data:image/webp;base64,${Buffer.from(arrayBuffer).toString('base64')}`;
+          engineUsed = "replicate-flux";
+          console.log('✅ Replicate FLUX generated fallback image successfully!');
+        }
+      } catch (replicateErr) {
+        console.error('❌ Replicate generation also failed:', replicateErr.message || replicateErr);
       }
     }
 
@@ -310,21 +322,32 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
     }
 
     // STEP 4: GENERATE VIRAL VIDEO & DELIVER PAYLOADS
-    console.log('Generating viral transition video...');
-    
-    // We use the watermarked buffer for the video so the brand travels with it
-    const videoBufferTarget = cloudProcessedWatermarkedBuffer || Buffer.from(generatedImageBase64.replace(/^data:image\/\w+;base64,/, ""), 'base64');
+    let viralVideoBase64 = null;
+    const shouldGenerateVideo = req.body.generateVideo === 'true' || req.query.video === 'true';
 
-    // Get target dimensions for matching resolutions in the transition video
-    const targetMetadata = await sharp(videoBufferTarget).metadata();
+    if (shouldGenerateVideo) {
+      try {
+        console.log('Generating viral transition video...');
+        
+        // We use the watermarked buffer for the video so the brand travels with it
+        const videoBufferTarget = cloudProcessedWatermarkedBuffer || Buffer.from(generatedImageBase64.replace(/^data:image\/\w+;base64,/, ""), 'base64');
 
-    // Convert source upload to standard jpeg buffer and resize to target dimensions for FFmpeg compatibility
-    const sourceJpegBuffer = await sharp(file.buffer)
-      .resize(targetMetadata.width, targetMetadata.height, { fit: 'fill' })
-      .jpeg()
-      .toBuffer();
+        // Get target dimensions for matching resolutions in the transition video
+        const targetMetadata = await sharp(videoBufferTarget).metadata();
 
-    const viralVideoBase64 = await createMorphVideo(sourceJpegBuffer, videoBufferTarget);
+        // Convert source upload to standard jpeg buffer and resize to target dimensions for FFmpeg compatibility
+        const sourceJpegBuffer = await sharp(file.buffer)
+          .resize(targetMetadata.width, targetMetadata.height, { fit: 'fill' })
+          .jpeg()
+          .toBuffer();
+
+        viralVideoBase64 = await createMorphVideo(sourceJpegBuffer, videoBufferTarget);
+      } catch (videoErr) {
+        console.warn('Video rendering skipped or failed:', videoErr.message);
+      }
+    } else {
+      console.log('Skipping viral video generation (not requested by client).');
+    }
 
     console.log('Dispensing complete asset payload.');
     return res.status(200).json({
