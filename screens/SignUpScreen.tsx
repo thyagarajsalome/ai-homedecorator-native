@@ -205,10 +205,11 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
-    width: 100,
-    height: 100,
+    width: 120,
+    height: 120,
     marginBottom: 24,
-    borderRadius: 20,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
   },
   title: {
     fontSize: 32,

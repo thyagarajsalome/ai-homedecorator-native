@@ -288,7 +288,7 @@ export const StoreModal: React.FC<StoreModalProps> = ({
                 <ActivityIndicator color={Colors.white} />
               ) : (
                 <LinearGradient
-                  colors={["#6366F1", "#D946EF"]}
+                  colors={["#EA580C", "#D97706"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.gradientBtn}
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "rgba(11, 15, 25, 0.65)", // Glassmorphism translucent background
+    backgroundColor: "rgba(18, 12, 9, 0.88)", // Glassmorphism translucent background
     borderTopLeftRadius: BorderRadius["4xl"],
     borderTopRightRadius: BorderRadius["4xl"],
     maxHeight: "85%",
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   packageCard: {
-    backgroundColor: "rgba(30, 41, 59, 0.3)",
+    backgroundColor: "rgba(38, 28, 22, 0.45)",
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.05)",
     borderRadius: BorderRadius.xl,
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   },
   packageCardSelected: {
     borderColor: Colors.brand.primary,
-    backgroundColor: "rgba(99, 102, 241, 0.08)",
+    backgroundColor: "rgba(234, 88, 12, 0.12)",
     shadowColor: Colors.brand.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -387,14 +387,14 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   packageCardPopular: {
-    borderColor: "#D946EF",
-    backgroundColor: "rgba(217, 70, 239, 0.04)",
+    borderColor: "#F59E0B",
+    backgroundColor: "rgba(245, 158, 11, 0.08)",
   },
   popularBadge: {
     position: "absolute",
     top: -10,
     right: 16,
-    backgroundColor: "#D946EF",
+    backgroundColor: "#EA580C",
     paddingHorizontal: Spacing.sm,
     paddingVertical: 3,
     borderRadius: BorderRadius.full,
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     borderColor: "#F8FAFC",
   },
   bestValueBadge: {
-    backgroundColor: "#10B981",
+    backgroundColor: "#D97706",
   },
   badgeText: {
     color: Colors.white,
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   pkgCreditsInfo: {
-    color: "#10B981", // Green/Teal accent color
+    color: "#FB923C", // Green/Teal accent color
     fontSize: Typography.size.sm + 1,
     fontWeight: Typography.weight.bold,
     marginBottom: 4,
@@ -443,15 +443,15 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "rgba(16, 185, 129, 0.12)",
+    backgroundColor: "rgba(234, 88, 12, 0.15)",
     borderWidth: 1.5,
-    borderColor: "#10B981",
+    borderColor: "#EA580C",
     justifyContent: "center",
     alignItems: "center",
     marginRight: Spacing.md,
   },
   greenTickText: {
-    color: "#10B981",
+    color: "#FB923C",
     fontSize: 11,
     fontWeight: Typography.weight.bold,
   },
