@@ -39,27 +39,19 @@ const ImageUploader: React.FC<ImageUploaderProps> = React.memo(({ onImageSelecte
   const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   const openImageGallery = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission Needed",
-        "We need access to your photos to continue. Please enable it in Settings.",
-        [{ text: "OK" }]
-      );
-      return;
-    }
+    try {
+      // Modern Android Photo Picker does not require broad media storage permissions
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1, // Keep original quality; we compress below
+      });
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1, // Keep original quality; we compress below
-    });
-
-    if (!result.canceled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const compressedUri = await compressImage(result.assets[0].uri);
-      onImageSelected(compressedUri);
-    }
+      if (!result.canceled) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        const compressedUri = await compressImage(result.assets[0].uri);
+        onImageSelected(compressedUri);
+      }
     } catch (err) {
       console.error("Gallery picker error:", err);
       Alert.alert("Error", "Could not open photo picker. Please try again.");
