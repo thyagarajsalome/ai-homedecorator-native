@@ -32,9 +32,13 @@ const CATEGORY_TIPS: Record<string, { title: string; message: string }> = {
     title: "Full Room Design Guide 🌍",
     message: "Try to take a wide-angle photo of the room from a corner or doorway to capture the entire layout."
   },
-  space_remodel: {
-    title: "Kitchen & Bath Guide 🍳",
-    message: "Try to take the photo from a corner to capture the full kitchen or bathroom space."
+  kitchen: {
+    title: "Kitchen Guide 🍳",
+    message: "Try to take the photo from a corner to capture the full kitchen counter and island."
+  },
+  bathroom: {
+    title: "Bathroom Guide 🛁",
+    message: "Try to take the photo capturing the vanity, mirror, and shower area clearly."
   },
   flooring: {
     title: "Flooring Guide 🪵",

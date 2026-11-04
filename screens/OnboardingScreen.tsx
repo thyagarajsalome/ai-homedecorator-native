@@ -182,8 +182,8 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                   <Text style={styles.benefitIcon}>🎁</Text>
                 </View>
                 <View style={styles.benefitTextCol}>
-                  <Text style={styles.benefitTitle}>Free Trial Included</Text>
-                  <Text style={styles.benefitDesc}>Sign up today to get free credits and transform your first room on us.</Text>
+                  <Text style={styles.benefitTitle}>Pay As You Go</Text>
+                  <Text style={styles.benefitDesc}>Affordable credit packs with zero monthly subscriptions. Pay only for what you design.</Text>
                 </View>
               </View>
             </View>
@@ -250,7 +250,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                     end={{ x: 1, y: 1 }}
                     style={styles.ctaGradient}
                   >
-                    <Text style={styles.ctaText}>Get Started For Free</Text>
+                    <Text style={styles.ctaText}>Get Started</Text>
                   </LinearGradient>
                 </TouchableOpacity>
 

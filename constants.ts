@@ -38,16 +38,26 @@ export const ELEMENT_CATEGORIES: SelectionCategory[] = [
     ]
   },
   {
-    id: "space_remodel",
-    name: "Kitchen & Bath",
+    id: "kitchen",
+    name: "Kitchen Design",
     icon: "🍳",
     guardrail: "CRITICAL: Isolate the incoming space and dynamically replace the complete interior architecture, millwork layouts, plumbing fixtures, and countertop styling to transform the room functionality.",
     choices: [
       { name: "Farmhouse Kitchen", promptSuffix: "complete kitchen remodel featuring classic white shaker cabinets, white quartz countertops, apron-front farmhouse sink, and black hardware accents", thumbnail: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=150&q=80" },
       { name: "Euro Minimalist Kitchen", promptSuffix: "handleless floor-to-ceiling flat panel dark wood kitchen cabinetry, seamless integrated appliances, and a single solid marble slab waterfall island", thumbnail: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=150&q=80" },
       { name: "Chef's Kitchen", promptSuffix: "professional kitchen environment layout with professional-grade stainless steel countertops, open metal shelving, commercial-style pull-down faucet, and brick details", thumbnail: "https://images.unsplash.com/photo-1556909212-d5b604ad0567?auto=format&fit=crop&w=150&q=80" },
-      { name: "Luxury Spa Bathroom", promptSuffix: "high-end wellness master bathroom with a deep freestanding soaking tub, floating light oak vanities, and floor-to-ceiling natural stone wall slabs", thumbnail: "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=150&q=80" },
-      { name: "Monochromatic Bathroom", promptSuffix: "high-contrast bathroom layout showing matte black plumbing fixtures, clean floating geometric white porcelain basins, and dark gray tiled walk-in rain showers", thumbnail: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=150&q=80" }
+      { name: "Modern Minimalist", promptSuffix: "clean white kitchen with hidden appliances, subtle recessed lighting, and a smooth quartz counter", thumbnail: "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=150&q=80" }
+    ]
+  },
+  {
+    id: "bathroom",
+    name: "Bathroom Design",
+    icon: "🛁",
+    guardrail: "CRITICAL: Isolate the incoming space and dynamically replace the plumbing fixtures, shower screens, wall tiles, and vanity styling.",
+    choices: [
+      { name: "Luxury Spa", promptSuffix: "high-end wellness master bathroom with a deep freestanding soaking tub, floating light oak vanities, and floor-to-ceiling natural stone wall slabs", thumbnail: "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=150&q=80" },
+      { name: "Monochromatic", promptSuffix: "high-contrast bathroom layout showing matte black plumbing fixtures, clean floating geometric white porcelain basins, and dark gray tiled walk-in rain showers", thumbnail: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=150&q=80" },
+      { name: "Bright & Airy", promptSuffix: "light white tiled bathroom with brass hardware accents, natural sunlight, and hanging green plants", thumbnail: "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=150&q=80" }
     ]
   },
   {

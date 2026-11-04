@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const dotenv = require('dotenv');
-const Replicate = require('replicate');
 const { createClient } = require('@supabase/supabase-js');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { GoogleGenAI } = require('@google/genai');
@@ -22,8 +21,6 @@ dotenv.config();
 // ============================================
 // CONFIGURATION
 // ============================================
-const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
-const IMAGE_MODEL = process.env.IMAGE_MODEL || 'black-forest-labs/flux-schnell';
 const USE_GEMINI_ENHANCEMENT = process.env.USE_GEMINI_ENHANCEMENT !== 'false'; 
 
 const NEGATIVE_PROMPT = 'blurry, distorted, deformed, ugly, bad anatomy, bad proportions, extra limbs, ' +
@@ -194,14 +191,13 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
       }
     }
 
-    // STEP 2: IMAGE GENERATION (PRIMARY: GOOGLE AI IMAGEN 3 FREE TIER -> SECONDARY: REPLICATE FLUX)
+    // STEP 2: IMAGE GENERATION (GOOGLE AI STUDIO - 100% FREE TIER)
     let generatedImageBase64 = null;
     let engineUsed = "none";
 
-    // 1. PRIMARY: Try Google AI Studio Free Tier (Imagen 3) first
     if (geminiApiKey) {
       try {
-        console.log('⚡ Attempting PRIMARY: Google AI (Imagen 3 Free Tier)...');
+        console.log('⚡ Generating room design via Google AI Studio (Imagen 3)...');
         const response = await googleGenAIClient.models.generateImages({
           model: 'imagen-3.0-generate-002',
           prompt: finalPrompt,
@@ -216,49 +212,10 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
           const base64Data = response.generatedImages[0].image.imageBytes;
           generatedImageBase64 = `data:image/jpeg;base64,${base64Data}`;
           engineUsed = "google-imagen-3-free";
-          console.log('✅ Google AI Studio (Free Tier) successfully generated image!');
+          console.log('✅ Google AI Studio successfully generated image!');
         }
       } catch (geminiGenErr) {
-        console.warn('⚠️ Google AI Studio Free Tier unavailable or limit reached:', geminiGenErr.message || geminiGenErr);
-        console.log('🔄 Seamlessly switching to SECONDARY: Replicate (FLUX)...');
-      }
-    }
-
-    // 2. SECONDARY / FALLBACK: Replicate (FLUX) only if Google Free Tier is exhausted or fails
-    if (!generatedImageBase64 && REPLICATE_API_TOKEN) {
-      try {
-        console.log('🚀 Using SECONDARY: Replicate (FLUX)...');
-        const replicate = new Replicate({ auth: REPLICATE_API_TOKEN });
-        const inputOptions = {
-          image: base64Image,
-          prompt: finalPrompt,
-          a_prompt: 'best quality, extremely detailed, photo from pinterest, interior design magazine, photorealistic, 8k',
-          n_prompt: NEGATIVE_PROMPT,
-          scale: 9, // strict adherence to prompt
-          ddim_steps: 30,
-          image_resolution: "512",
-          detect_resolution: 512
-        };
-
-        const output = await replicate.run(IMAGE_MODEL, { input: inputOptions });
-
-        if (output && Array.isArray(output) && output.length > 0) {
-          const finalOutput = output[output.length - 1]; // Get the last image
-          const imageUrl = typeof finalOutput.url === 'function' ? finalOutput.url().toString() : finalOutput.toString();
-          const imageResponse = await fetch(imageUrl);
-          const arrayBuffer = await imageResponse.arrayBuffer();
-          generatedImageBase64 = `data:image/webp;base64,${Buffer.from(arrayBuffer).toString('base64')}`;
-          engineUsed = "replicate-flux";
-          console.log('✅ Replicate FLUX generated fallback image successfully!');
-        } else if (output && typeof output === 'string') {
-          const imageResponse = await fetch(output);
-          const arrayBuffer = await imageResponse.arrayBuffer();
-          generatedImageBase64 = `data:image/webp;base64,${Buffer.from(arrayBuffer).toString('base64')}`;
-          engineUsed = "replicate-flux";
-          console.log('✅ Replicate FLUX generated fallback image successfully!');
-        }
-      } catch (replicateErr) {
-        console.error('❌ Replicate generation also failed:', replicateErr.message || replicateErr);
+        console.error('❌ Google AI Studio generation error:', geminiGenErr.message || geminiGenErr);
       }
     }
 

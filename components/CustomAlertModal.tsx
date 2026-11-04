@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
 
 interface CustomAlertModalProps {
   visible: boolean;
@@ -21,6 +22,7 @@ export const CustomAlertModal: React.FC<CustomAlertModalProps> = ({
   <Modal transparent visible={visible} animationType="fade">
     <View style={styles.modalOverlay}>
       <View style={styles.customAlertCard}>
+        <BlurView intensity={70} tint="dark" style={[StyleSheet.absoluteFill, { borderRadius: 20 }]} />
         <Text style={styles.alertTitle}>{title}</Text>
         <Text style={styles.alertMessage}>{message}</Text>
         <View style={styles.alertActions}>
@@ -45,7 +47,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   customAlertCard: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "rgba(30, 41, 59, 0.65)",
     borderRadius: 20,
     padding: 24,
     width: "100%",

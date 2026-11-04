@@ -9,6 +9,7 @@ import {
   Easing,
   Dimensions,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { Colors, Spacing, BorderRadius, Typography } from "../theme/designTokens";
 
 interface CelebrationModalProps {
@@ -142,6 +143,7 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
             },
           ]}
         >
+          <BlurView intensity={60} tint="dark" style={[StyleSheet.absoluteFill, { borderRadius: BorderRadius["3xl"] }]} />
           {/* Confetti Particle Layer (contained within the card limits) */}
           <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
             {particles.map((p) => {
@@ -240,7 +242,7 @@ const styles = StyleSheet.create({
   celebrationCard: {
     width: CONTAINER_WIDTH,
     height: CONTAINER_HEIGHT,
-    backgroundColor: "#1E1E2E", // Custom rich dark purple/slate background
+    backgroundColor: "rgba(30, 30, 46, 0.65)", // Glassmorphism dark purple background
     borderRadius: BorderRadius["3xl"],
     padding: Spacing.xl,
     alignItems: "center",

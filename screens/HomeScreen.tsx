@@ -12,6 +12,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
+import Animated, { FadeIn, FadeOut, SlideInDown } from "react-native-reanimated";
 
 // Business Logic Hooks
 import { useCredits } from "../hooks/useCredits";
@@ -78,7 +80,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         const celebratedKey = `celebrated_sign_in_${session.user.id}`;
         const hasCelebrated = await AsyncStorage.getItem(celebratedKey);
         if (!hasCelebrated) {
-          setIsCelebrationVisible(true);
+          // Pay-and-use model: do not pop free credit celebration on first login
           await AsyncStorage.setItem(celebratedKey, "true");
         }
       }
@@ -104,6 +106,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // ---- Handlers ----
 
   const handleResetWorkspace = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSourceImage(null);
     setActiveDisplayImage(null);
     setPremiumHdBackupUrl(null);
@@ -113,17 +116,22 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const handleGenerate = async (prompt: string, roomType: string, cost: number, styleName: string) => {
     if (credits < cost) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       setIsStoreVisible(true);
       return;
     }
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setGenerationStyleName(styleName);
     const result = await generateDesign(sourceImage!, prompt, roomType);
 
     if (result !== false) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setActiveDisplayImage(result.generatedImage);
       setPremiumHdBackupUrl(result.hdCleanImage);
       deductCredits(cost);
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
 
@@ -159,6 +167,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       }
       setHasUnlockedPremiumHd(true);
 
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         "Watermark Removed! ✨",
         "You can now save or share the full HD image."
@@ -179,11 +188,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       {/* Out-of-Credits Modal */}
       <CustomAlertModal
         visible={isCreditAlertVisible}
-        title="Out of Credits"
-        message="Your free 2-generation registration allowance has been fully exhausted."
+        title="Credits Required"
+        message="You need design credits to generate AI transformations. Tap below to choose an affordable credit pack and start redesigning!"
         onCancel={() => setIsCreditAlertVisible(false)}
-        onConfirm={() => setIsCreditAlertVisible(false)}
-        confirmText="OK"
+        onConfirm={() => {
+          setIsCreditAlertVisible(false);
+          setIsStoreVisible(true);
+        }}
+        confirmText="Get Credits"
       />
 
       {/* User Celebration Modal */}
@@ -232,28 +244,38 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* Phase 3: Result */}
         {activeDisplayImage && sourceImage ? (
-          <GeneratedImageDisplay
-            sourceImage={sourceImage}
-            generatedImage={activeDisplayImage}
-            hasUnlockedHd={hasUnlockedPremiumHd}
-            styleName={generationStyleName}
-            onReset={handleResetWorkspace}
-            onRemoveWatermark={handleRemoveWatermark}
-          />
+          <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
+            <GeneratedImageDisplay
+              sourceImage={sourceImage}
+              generatedImage={activeDisplayImage}
+              hasUnlockedHd={hasUnlockedPremiumHd}
+              styleName={generationStyleName}
+              onReset={handleResetWorkspace}
+              onRemoveWatermark={handleRemoveWatermark}
+            />
+          </Animated.View>
         ) : !sourceImage ? (
           /* Phase 1: Upload */
-          <>
-            <ImageUploader onImageSelected={setSourceImage} />
-            <InspirationGallery onSelectPreset={setSourceImage} />
-          </>
+          <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
+            <ImageUploader onImageSelected={(img) => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setSourceImage(img);
+            }} />
+            <InspirationGallery onSelectPreset={(img) => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setSourceImage(img);
+            }} />
+          </Animated.View>
         ) : (
           /* Phase 2: Configure */
-          <DesignWorkspace
-            sourceImage={sourceImage}
-            credits={credits}
-            onReset={handleResetWorkspace}
-            onGenerate={handleGenerate}
-          />
+          <Animated.View entering={SlideInDown.duration(400)} exiting={FadeOut.duration(200)}>
+            <DesignWorkspace
+              sourceImage={sourceImage}
+              credits={credits}
+              onReset={handleResetWorkspace}
+              onGenerate={handleGenerate}
+            />
+          </Animated.View>
         )}
       </ScrollView>
     </SafeAreaView>

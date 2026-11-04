@@ -11,6 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import Purchases, { PURCHASE_TYPE } from "react-native-purchases";
 import * as Notifications from "expo-notifications";
@@ -197,6 +198,7 @@ export const StoreModal: React.FC<StoreModalProps> = ({
     >
       <View style={styles.modalBackdrop}>
         <View style={styles.modalContent}>
+          <BlurView intensity={80} tint="dark" style={[StyleSheet.absoluteFill, { borderRadius: 30 }]} />
           {/* Close Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Top Up Credits</Text>
@@ -319,7 +321,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#0B0F19", // Ultra dark premium theme
+    backgroundColor: "rgba(11, 15, 25, 0.65)", // Glassmorphism translucent background
     borderTopLeftRadius: BorderRadius["4xl"],
     borderTopRightRadius: BorderRadius["4xl"],
     maxHeight: "85%",

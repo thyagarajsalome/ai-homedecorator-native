@@ -1,13 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, FlatList, Dimensions, Modal } from 'react-native';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring, 
-  withTiming, 
-  runOnJS 
-} from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
 import { ROOM_TYPES } from '../constants';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -26,86 +19,35 @@ export const RoomTypeBottomSheet: React.FC<RoomTypeBottomSheetProps> = ({
   selectedValue,
   onSelect,
 }) => {
-  const translateY = useSharedValue(SHEET_HEIGHT);
-  const [modalVisible, setModalVisible] = useState(isVisible);
-
-  useEffect(() => {
-    if (isVisible) {
-      translateY.value = SHEET_HEIGHT;
-      setModalVisible(true);
-      translateY.value = withSpring(0, { damping: 18, stiffness: 120 });
-    } else {
-      translateY.value = withTiming(SHEET_HEIGHT, { duration: 220 }, (finished) => {
-        if (finished) {
-          runOnJS(setModalVisible)(false);
-        }
-      });
-    }
-  }, [isVisible, translateY]);
-
-  const closeSheet = () => {
-    onClose();
-  };
-
-  // Drag down gesture to close sheet natively
-  const panGesture = Gesture.Pan()
-    .onUpdate((event) => {
-      if (event.translationY > 0) {
-        translateY.value = event.translationY;
-      }
-    })
-    .onEnd((event) => {
-      if (event.translationY > 120 || event.velocityY > 500) {
-        runOnJS(onClose)();
-      } else {
-        translateY.value = withSpring(0, { damping: 18, stiffness: 120 });
-      }
-    });
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
-
-  const animatedBackdropStyle = useAnimatedStyle(() => {
-    const opacity = 1 - translateY.value / SHEET_HEIGHT;
-    return {
-      opacity: Math.max(0, Math.min(1, opacity)),
-    };
-  });
-
   return (
     <Modal
       transparent
-      visible={modalVisible}
-      animationType="none"
-      onRequestClose={closeSheet}
+      visible={isVisible}
+      animationType="slide"
+      onRequestClose={onClose}
       statusBarTranslucent
     >
       <View style={styles.modalOverlay}>
-        {/* Backdrop */}
-        <Animated.View style={[styles.backdrop, animatedBackdropStyle]}>
-          <TouchableOpacity 
-            style={{ flex: 1 }} 
-            activeOpacity={1} 
-            onPress={closeSheet} 
-          />
-        </Animated.View>
+        {/* Backdrop (Close when tapped) */}
+        <TouchableOpacity 
+          style={styles.backdrop} 
+          activeOpacity={1} 
+          onPress={onClose} 
+        />
 
         {/* Bottom Sheet Card */}
-        <Animated.View style={[styles.sheetContainer, animatedStyle]}>
-          <GestureDetector gesture={panGesture}>
-            <View style={styles.headerGestureArea}>
-              {/* Drag Handle Indicator */}
-              <View style={styles.dragHandle} />
-              
-              <View style={styles.sheetHeader}>
-                <Text style={styles.sheetTitle}>Select Room Type</Text>
-                <TouchableOpacity onPress={closeSheet}>
-                  <Text style={styles.sheetCloseText}>Done</Text>
-                </TouchableOpacity>
-              </View>
+        <View style={styles.sheetContainer}>
+          <BlurView intensity={80} tint="dark" style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }]} />
+          
+          <View style={styles.headerGestureArea}>
+            <View style={styles.dragHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Select Room Type</Text>
+              <TouchableOpacity onPress={onClose}>
+                <Text style={styles.sheetCloseText}>Done</Text>
+              </TouchableOpacity>
             </View>
-          </GestureDetector>
+          </View>
 
           <FlatList
             data={ROOM_TYPES}
@@ -119,7 +61,7 @@ export const RoomTypeBottomSheet: React.FC<RoomTypeBottomSheetProps> = ({
                 ]}
                 onPress={() => {
                   onSelect(item);
-                  closeSheet();
+                  onClose();
                 }}
               >
                 <Text
@@ -138,7 +80,7 @@ export const RoomTypeBottomSheet: React.FC<RoomTypeBottomSheetProps> = ({
               </TouchableOpacity>
             )}
           />
-        </Animated.View>
+        </View>
       </View>
     </Modal>
   );
@@ -160,7 +102,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: SHEET_HEIGHT,
-    backgroundColor: '#1E293B',
+    backgroundColor: 'rgba(30, 41, 59, 0.65)',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
