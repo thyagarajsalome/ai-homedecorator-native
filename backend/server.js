@@ -130,7 +130,18 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
     if (!designPrompt) return res.status(400).json({ error: 'Missing designPrompt parameter' });
     if (!file) return res.status(400).json({ error: 'Missing uploaded room image snapshot file' });
 
-    console.log(`Processing design: [${roomType}] -> [${designPrompt}] for User ID: ${req.user.id}`);
+    // Enforce Native Mobile App only policy (protect paid mobile API key)
+    const origin = req.headers.origin || req.headers.referer || '';
+    const clientPlatform = req.headers['x-client-platform'];
+
+    if (origin.includes('aihomedecorator.com') || (origin && clientPlatform !== 'native-mobile')) {
+      console.warn(`[Blocked Web Generation] Origin ${origin} attempted to use native mobile API.`);
+      return res.status(403).json({
+        error: 'AI image generation is exclusively reserved for the native mobile app. Please download the AI Home Decorator app on Google Play to transform your room.'
+      });
+    }
+
+    console.log(`Processing design: [${roomType}] -> [${designPrompt}] for User ID: ${req.user.id} (Client: ${clientPlatform || 'native'})`);
 
     // Create user-scoped Supabase client to perform credit validation under user context
     const authHeader = req.headers.authorization;

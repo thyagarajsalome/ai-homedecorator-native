@@ -114,6 +114,7 @@ export const decorateRoom = async (
         // Do NOT set Content-Type to multipart/form-data manually;
         // fetch handles the boundary automatically.
         Authorization: `Bearer ${token}`,
+        "x-client-platform": "native-mobile",
       },
       body: formData,
     });
