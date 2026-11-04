@@ -191,31 +191,40 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
       }
     }
 
-    // STEP 2: IMAGE GENERATION (GOOGLE AI STUDIO - 100% FREE TIER)
+    // STEP 2: IMAGE GENERATION (GOOGLE GEMINI MULTIMODAL IMAGE AI)
     let generatedImageBase64 = null;
     let engineUsed = "none";
 
     if (geminiApiKey) {
       try {
-        console.log('⚡ Generating room design via Google AI Studio (Imagen 3)...');
-        const response = await googleGenAIClient.models.generateImages({
-          model: 'imagen-3.0-generate-002',
-          prompt: finalPrompt,
-          config: {
-            numberOfImages: 1,
-            outputMimeType: 'image/jpeg',
-            aspectRatio: '1:1',
-          },
+        console.log('⚡ Generating room transformation via Google Gemini Image AI (gemini-3.1-flash-image)...');
+        const response = await googleGenAIClient.models.generateContent({
+          model: 'gemini-3.1-flash-image',
+          contents: [
+            {
+              inlineData: {
+                mimeType: file.mimetype || 'image/jpeg',
+                data: file.buffer.toString('base64')
+              }
+            },
+            {
+              text: `Transform and redesign this ${roomType || 'room'} in a ${designPrompt} style. Maintain the architectural layout, walls, windows, and perspective while completely upgrading the interior decor, flooring, furniture, textures, and lighting with high-end photorealistic 8k quality.`
+            }
+          ]
         });
 
-        if (response && response.generatedImages && response.generatedImages[0]?.image?.imageBytes) {
-          const base64Data = response.generatedImages[0].image.imageBytes;
-          generatedImageBase64 = `data:image/jpeg;base64,${base64Data}`;
-          engineUsed = "google-imagen-3-free";
-          console.log('✅ Google AI Studio successfully generated image!');
+        const parts = response?.candidates?.[0]?.content?.parts || [];
+        for (const part of parts) {
+          if (part.inlineData && part.inlineData.data) {
+            const mime = part.inlineData.mimeType || 'image/jpeg';
+            generatedImageBase64 = `data:${mime};base64,${part.inlineData.data}`;
+            engineUsed = "google-gemini-image";
+            console.log('✅ Google Gemini Image AI successfully generated room transformation!');
+            break;
+          }
         }
       } catch (geminiGenErr) {
-        console.error('❌ Google AI Studio generation error:', geminiGenErr.message || geminiGenErr);
+        console.error('❌ Google Gemini Image generation error:', geminiGenErr.message || geminiGenErr);
       }
     }
 
