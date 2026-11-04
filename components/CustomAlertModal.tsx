@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   alertMessage: { fontSize: 15, color: "#94A3B8", textAlign: "center", marginBottom: 24, lineHeight: 22 },
   alertActions: { flexDirection: "row", width: "100%", justifyContent: "flex-end", gap: 16 },
   alertBtnCancel: { paddingVertical: 10, paddingHorizontal: 12 },
-  alertBtnTextCancel: { color: "#6366F1", fontWeight: "700", fontSize: 14 },
+  alertBtnTextCancel: { color: "#EA580C", fontWeight: "700", fontSize: 14 },
   alertBtnConfirm: { paddingVertical: 10, paddingHorizontal: 12 },
-  alertBtnTextConfirm: { color: "#6366F1", fontWeight: "700", fontSize: 14 },
+  alertBtnTextConfirm: { color: "#EA580C", fontWeight: "700", fontSize: 14 },
 });

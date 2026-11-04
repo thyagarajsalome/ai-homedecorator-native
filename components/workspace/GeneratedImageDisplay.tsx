@@ -283,7 +283,7 @@ const GeneratedImageDisplay: React.FC<GeneratedImageDisplayProps> = ({
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={["rgba(99, 102, 241, 0.2)", "rgba(217, 70, 239, 0.2)"]}
+            colors={["rgba(234, 88, 12, 0.25)", "rgba(245, 158, 11, 0.25)"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.upsellGradient}

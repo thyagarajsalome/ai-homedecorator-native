@@ -6,30 +6,30 @@
 // ============================================================
 
 export const Colors = {
-  // Brand Palette
+  // Brand Palette - Harmonized with warm architectural amber / terracotta / gold logo
   brand: {
-    primary: '#6366F1',       // Indigo
-    secondary: '#D946EF',     // Fuchsia
-    accent: '#8B5CF6',        // Violet
-    primaryLight: '#818CF8',  // Light Indigo (text on dark)
-    accentLight: '#C4B5FD',   // Lavender
+    primary: '#EA580C',       // Warm Terracotta Orange
+    secondary: '#F59E0B',     // Honey Gold
+    accent: '#D97706',        // Amber Ochre
+    primaryLight: '#FB923C',  // Light Amber / Peach (text on dark)
+    accentLight: '#FDE68A',   // Warm Honey Cream
   },
 
-  // Background Layers
+  // Background Layers - Warm obsidian & espresso undertones
   background: {
-    base: '#050505',          // App background
-    card: 'rgba(30, 41, 59, 0.4)',  // Card surfaces
-    elevated: '#1E293B',      // Elevated surfaces
-    input: '#0F172A',         // Input fields
-    subtle: '#334155',        // Subtle separators / secondary buttons
+    base: '#0A0806',          // App background (warm deep obsidian)
+    card: 'rgba(38, 28, 22, 0.55)',  // Warm tinted card surfaces
+    elevated: '#201612',      // Elevated surfaces
+    input: '#150E0B',         // Input fields
+    subtle: '#3B2920',        // Subtle separators / secondary buttons
   },
 
   // Text
   text: {
-    primary: '#F8FAFC',       // Headlines & body
-    secondary: '#CBD5E1',     // Labels
-    muted: '#94A3B8',         // Placeholders, captions
-    disabled: '#64748B',      // Disabled states
+    primary: '#FFFBF5',       // Warm White Headlines & body
+    secondary: '#E2D9D2',     // Labels
+    muted: '#A89F97',         // Placeholders, captions
+    disabled: '#6E645D',      // Disabled states
   },
 
   // Semantic
@@ -38,16 +38,16 @@ export const Colors = {
     error: '#EF4444',
     errorBg: 'rgba(239, 68, 68, 0.15)',
     warning: '#F59E0B',
-    infoBg: 'rgba(139, 92, 246, 0.1)',
-    infoBorder: 'rgba(139, 92, 246, 0.3)',
+    infoBg: 'rgba(234, 88, 12, 0.1)',
+    infoBorder: 'rgba(234, 88, 12, 0.3)',
   },
 
   // Borders
   border: {
-    default: 'rgba(255, 255, 255, 0.05)',
-    subtle: '#334155',
-    brand: 'rgba(99, 102, 241, 0.4)',
-    brandStrong: '#6366F1',
+    default: 'rgba(255, 255, 255, 0.08)',
+    subtle: '#3B2920',
+    brand: 'rgba(234, 88, 12, 0.45)',
+    brandStrong: '#EA580C',
   },
 
   // Overlays

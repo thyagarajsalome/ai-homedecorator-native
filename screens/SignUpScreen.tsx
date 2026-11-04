@@ -248,14 +248,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    backgroundColor: "#6366F1",
+    backgroundColor: "#EA580C",
     height: 56,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 12,
     marginBottom: 16,
-    shadowColor: "#6366F1",
+    shadowColor: "#EA580C",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   linkAccent: {
-    color: "#818CF8",
+    color: "#FB923C",
     fontWeight: "700",
   },
   footer: {

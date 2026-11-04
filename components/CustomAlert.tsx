@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
   },
-  successBtn: { backgroundColor: "#6366F1" },
+  successBtn: { backgroundColor: "#EA580C" },
   errorBtn: { backgroundColor: "#EF4444" },
   buttonText: { color: "white", fontSize: 16, fontWeight: "bold" },
 });

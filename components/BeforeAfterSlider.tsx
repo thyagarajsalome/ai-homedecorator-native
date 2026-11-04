@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   arrows: {
-    color: '#6366F1',
+    color: '#EA580C',
     fontWeight: '900',
     fontSize: 10,
     letterSpacing: -1,

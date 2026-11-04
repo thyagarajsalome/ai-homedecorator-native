@@ -289,7 +289,7 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={["#6366F1", "#D946EF"]}
+            colors={["#EA580C", "#D97706"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.generateBtnInner}

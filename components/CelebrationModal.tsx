@@ -20,9 +20,9 @@ interface CelebrationModalProps {
 // Particle Configuration
 const PARTICLE_COUNT = 30;
 const COLORS = [
-  "#6366F1", // Indigo
-  "#D946EF", // Fuchsia
-  "#8B5CF6", // Violet
+  "#EA580C", // Indigo
+  "#F59E0B", // Fuchsia
+  "#D97706", // Violet
   "#FFD700", // Gold
   "#10B981", // Emerald
   "#FF6B6B", // Coral

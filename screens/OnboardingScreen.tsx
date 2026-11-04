@@ -245,7 +245,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                   onPress={() => handleCompleteOnboarding("SignUp")}
                 >
                   <LinearGradient
-                    colors={["#8B5CF6", "#D946EF"]}
+                    colors={["#EA580C", "#D97706"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.ctaGradient}
@@ -397,13 +397,13 @@ const styles = StyleSheet.create({
   },
   indicatorDotActive: {
     width: 24,
-    backgroundColor: "#818CF8",
+    backgroundColor: "#FB923C",
   },
   actionContainer: {
     width: "100%",
   },
   nextButton: {
-    backgroundColor: "#6366F1",
+    backgroundColor: "#EA580C",
     height: 56,
     borderRadius: BorderRadius.lg,
     justifyContent: "center",
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.sm + 1,
   },
   loginLink: {
-    color: "#818CF8",
+    color: "#FB923C",
     fontWeight: Typography.weight.bold,
   },
 });
