@@ -16,6 +16,7 @@
       "package": "com.aihomedecorator.twa",
       "versionCode": 63,
       "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png",
         "backgroundColor": "#ffffff"
       },
