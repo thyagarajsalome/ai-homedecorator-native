@@ -60,6 +60,10 @@ const ImageUploader: React.FC<ImageUploaderProps> = React.memo(({ onImageSelecte
       const compressedUri = await compressImage(result.assets[0].uri);
       onImageSelected(compressedUri);
     }
+    } catch (err) {
+      console.error("Gallery picker error:", err);
+      Alert.alert("Error", "Could not open photo picker. Please try again.");
+    }
   };
 
   const openCamera = async () => {
