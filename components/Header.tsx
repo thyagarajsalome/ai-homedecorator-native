@@ -17,11 +17,13 @@ const Header: React.FC<HeaderProps> = ({ children }) => {
       <View style={styles.headerNav}>
         <View style={styles.headerLogoContainer}>
           {/* Updated to use your provided logo */}
-          <Image
-            source={require("../assets/images/icon.png")}
-            style={{ width: 32, height: 32, borderRadius: 8 }}
-            resizeMode="contain"
-          />
+          <View style={styles.headerLogoBadge}>
+            <Image
+              source={require("../assets/images/logo-full.png")}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="contain"
+            />
+          </View>
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitle}>AI Decorator</Text>
           </View>
@@ -44,6 +46,15 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     height: 60,
     paddingHorizontal: Spacing.md,
+  },
+  headerLogoBadge: {
+    width: 44,
+    height: 30,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    padding: 2,
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerLogoContainer: {
     flexDirection: "row",

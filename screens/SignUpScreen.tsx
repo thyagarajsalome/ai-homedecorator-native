@@ -6,97 +6,134 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Image,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
+import CustomAlert from "../components/CustomAlert";
 import { useAuth } from "../context/AuthContext";
 import { GoogleIcon } from "../components/Icons";
 
 const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const { signInWithGoogle } = useAuth();
 
-  // screens/SignUpScreen.tsx
+  // --- Custom Alert State ---
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    title: "",
+    message: "",
+    type: "success" as "success" | "error",
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    type: "success" | "error" = "success"
+  ) => {
+    setAlertConfig({ title, message, type });
+    setAlertVisible(true);
+  };
 
   const handleGoogleSignUp = async () => {
-    setGoogleLoading(true);
     try {
+      setGoogleLoading(true);
       await signInWithGoogle();
     } catch (err: any) {
-      if (err.message && !err.message.includes("cancel")) {
-        Alert.alert("Google Sign Up Failed", err.message || "Could not sign up with Google.");
+      if (err.message?.includes("CANCELED") || err.code === "-5") {
+        return;
       }
+      showAlert("Google Sign Up Failed", err.message || "Could not sign up with Google.", "error");
     } finally {
       setGoogleLoading(false);
     }
   };
 
   const handleSignUp = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+    if (!email.trim() || !password) {
+      showAlert("Missing Information", "Please enter both your email and password.", "error");
+      return;
+    }
+
+    if (password.length < 6) {
+      showAlert("Password Too Short", "Password must be at least 6 characters.", "error");
       return;
     }
 
     setLoading(true);
     try {
       const { error } = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
         options: {
-          // This tells Supabase to open your app after the user clicks the email link
           emailRedirectTo: "aihomedecoratornative://login",
         },
       });
 
       if (error) {
-        Alert.alert("Sign Up Failed", error.message);
+        showAlert("Sign Up Failed", error.message, "error");
       } else {
-        Alert.alert(
-          "Account Created",
-          "Please check your email to verify your account."
+        showAlert(
+          "Account Created! 🎉",
+          "Please check your email to verify your account and start designing.",
+          "success"
         );
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message);
+      showAlert("Error", error.message || "An unexpected error occurred.", "error");
     } finally {
       setLoading(false);
     }
   };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Header & Logo */}
           <View style={styles.header}>
-            {/* Updated to use your provided logo */}
-            <Image
-              source={require("../assets/images/icon.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <View style={styles.logoCard}>
+              <Image
+                source={require("../assets/images/logo-full.png")}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
             <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join the future of home design</Text>
+            <Text style={styles.subtitle}>
+              Join the future of AI interior home design
+            </Text>
           </View>
 
+          {/* Form */}
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>Email Address</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  focusedInput === "email" && styles.inputFocused,
+                ]}
                 placeholder="you@example.com"
-                placeholderTextColor="#64748B"
+                placeholderTextColor="#78716C"
                 value={email}
                 onChangeText={setEmail}
+                onFocus={() => setFocusedInput("email")}
+                onBlur={() => setFocusedInput(null)}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -105,44 +142,80 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Create a strong password"
-                placeholderTextColor="#64748B"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+              <View style={styles.passwordWrapper}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.passwordInput,
+                    focusedInput === "password" && styles.inputFocused,
+                  ]}
+                  placeholder="Create a strong password (min 6 chars)"
+                  placeholderTextColor="#78716C"
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => setFocusedInput("password")}
+                  onBlur={() => setFocusedInput(null)}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeBtn}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#A8A29E"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
-
+            {/* Primary CTA */}
             <TouchableOpacity
               style={[styles.button, (loading || googleLoading) && styles.buttonDisabled]}
-              onPress={handleSignUp}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                handleSignUp();
+              }}
               disabled={loading || googleLoading}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <View style={styles.loadingWrapper}>
+                  <ActivityIndicator color="#FFFFFF" />
+                </View>
               ) : (
-                <Text style={styles.buttonText}>Sign Up</Text>
+                <LinearGradient
+                  colors={["#EA580C", "#D97706"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.gradientBtn}
+                >
+                  <Text style={styles.buttonText}>Create Free Account</Text>
+                </LinearGradient>
               )}
             </TouchableOpacity>
 
+            {/* Separator */}
             <View style={styles.separatorContainer}>
               <View style={styles.separatorLine} />
               <Text style={styles.separatorText}>OR</Text>
               <View style={styles.separatorLine} />
             </View>
 
+            {/* Google Sign Up */}
             <TouchableOpacity
               style={[styles.googleButton, (loading || googleLoading) && styles.googleButtonDisabled]}
-              onPress={handleGoogleSignUp}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                handleGoogleSignUp();
+              }}
               disabled={loading || googleLoading}
               activeOpacity={0.8}
             >
               {googleLoading ? (
-                <ActivityIndicator color="#F8FAFC" />
+                <ActivityIndicator color="#FFFBF5" />
               ) : (
                 <>
                   <GoogleIcon style={styles.googleIcon} />
@@ -176,12 +249,19 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 style={styles.legalLink}
                 onPress={() => navigation.navigate("Disclaimer")}
               >
-                Disclaimer
+                Terms
               </Text>
-              .
             </Text>
           </View>
         </ScrollView>
+
+        <CustomAlert
+          visible={alertVisible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          onClose={() => setAlertVisible(false)}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -190,7 +270,7 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#0F172A",
+    backgroundColor: "#0A0806",
   },
   container: {
     flex: 1,
@@ -202,25 +282,37 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    marginBottom: 40,
+    marginBottom: 28,
+  },
+  logoCard: {
+    width: 150,
+    height: 105,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+    padding: 8,
+    shadowColor: "#EA580C",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 6,
   },
   logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 24,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
+    width: "100%",
+    height: "100%",
   },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: "800",
-    color: "#F8FAFC",
-    marginBottom: 8,
+    color: "#FFFBF5",
+    marginBottom: 6,
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#94A3B8",
+    fontSize: 15,
+    color: "#A89F97",
     textAlign: "center",
   },
   form: {
@@ -229,94 +321,124 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    color: "#CBD5E1",
+    color: "#E2D9D2",
     marginBottom: 8,
     marginLeft: 4,
+    letterSpacing: 0.2,
   },
   input: {
-    backgroundColor: "#1E293B",
-    color: "#F8FAFC",
+    backgroundColor: "rgba(38, 28, 22, 0.45)",
+    color: "#FFFBF5",
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#334155",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.08)",
     paddingHorizontal: 16,
     height: 56,
-    fontSize: 16,
+    fontSize: 15,
+  },
+  inputFocused: {
+    borderColor: "#EA580C",
+    backgroundColor: "rgba(234, 88, 12, 0.06)",
+  },
+  passwordWrapper: {
+    position: "relative",
+    justifyContent: "center",
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeBtn: {
+    position: "absolute",
+    right: 14,
+    height: 56,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 6,
   },
   button: {
-    backgroundColor: "#EA580C",
     height: 56,
     borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 12,
+    overflow: "hidden",
+    marginTop: 10,
     marginBottom: 16,
     shadowColor: "#EA580C",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
     shadowRadius: 12,
-    elevation: 8,
+    elevation: 6,
+  },
+  gradientBtn: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingWrapper: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#EA580C",
+    alignItems: "center",
+    justifyContent: "center",
   },
   buttonDisabled: {
-    backgroundColor: "#334155",
-    opacity: 0.7,
+    opacity: 0.6,
   },
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
+    letterSpacing: 0.3,
   },
   separatorContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 16,
+    marginVertical: 14,
   },
   separatorLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#334155",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
   },
   separatorText: {
-    color: "#64748B",
-    paddingHorizontal: 12,
-    fontSize: 14,
-    fontWeight: "600",
+    color: "#A89F97",
+    paddingHorizontal: 14,
+    fontSize: 12,
+    fontWeight: "700",
   },
   googleButton: {
     flexDirection: "row",
-    backgroundColor: "#1E293B",
-    height: 56,
-    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(38, 28, 22, 0.4)",
+    borderRadius: 16,
+    height: 56,
     borderWidth: 1,
-    borderColor: "#334155",
-    marginBottom: 24,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    marginBottom: 20,
   },
   googleButtonDisabled: {
-    opacity: 0.5,
-    backgroundColor: "#0F172A",
+    opacity: 0.6,
   },
   googleIcon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   googleButtonText: {
-    color: "#F8FAFC",
-    fontSize: 16,
-    fontWeight: "700",
+    color: "#FFFBF5",
+    fontSize: 15,
+    fontWeight: "600",
   },
   linkContainer: {
     alignItems: "center",
     padding: 8,
   },
   linkText: {
-    color: "#94A3B8",
-    fontSize: 15,
+    color: "#A89F97",
+    fontSize: 14,
   },
   linkAccent: {
     color: "#FB923C",
@@ -325,16 +447,15 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: "auto",
     alignItems: "center",
-    paddingTop: 24,
+    paddingTop: 20,
   },
   legalText: {
-    color: "#64748B",
+    color: "#78716C",
     fontSize: 12,
     textAlign: "center",
-    lineHeight: 18,
   },
   legalLink: {
-    color: "#94A3B8",
+    color: "#A89F97",
     textDecorationLine: "underline",
   },
 });

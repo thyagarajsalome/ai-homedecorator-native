@@ -195,15 +195,17 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient colors={["#0F172A", "#1E293B"]} style={styles.container}>
+    <LinearGradient colors={["#0A0806", "#18110D"]} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         {/* Skip button for the onboarding slides before the last slide */}
         <View style={styles.header}>
-          <Image
-            source={require("../assets/images/icon.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <View style={styles.logoBadge}>
+            <Image
+              source={require("../assets/images/logo-full.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
           {currentSlide < TOTAL_SLIDES - 1 && (
             <TouchableOpacity
               onPress={() => handleCompleteOnboarding("Login")}
@@ -285,6 +287,15 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 24,
   },
+  logoBadge: {
+    width: 52,
+    height: 36,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    padding: 3,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   logo: {
     width: 32,
     height: 32,
@@ -330,7 +341,7 @@ const styles = StyleSheet.create({
   benefitRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(30, 41, 59, 0.5)",
+    backgroundColor: "rgba(38, 28, 22, 0.55)",
     padding: Spacing.md,
     borderRadius: BorderRadius.xl,
     borderWidth: 1,

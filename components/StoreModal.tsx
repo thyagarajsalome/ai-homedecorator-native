@@ -29,6 +29,8 @@ interface CreditPackage {
   name: string;
   credits: number;
   price: string;
+  unitPrice: string;
+  savingsBadge?: string;
   popular?: boolean;
   bestValue?: boolean;
   description: string;
@@ -40,6 +42,7 @@ const PACKAGES: CreditPackage[] = [
     name: "Starter Pack",
     credits: 5,
     price: "Rs. 249",
+    unitPrice: "Rs. 50 / design",
     description: "Ideal for testing new room styles quickly.",
   },
   {
@@ -47,6 +50,8 @@ const PACKAGES: CreditPackage[] = [
     name: "Pro Pack",
     credits: 15,
     price: "Rs. 499",
+    unitPrice: "Rs. 33 / design",
+    savingsBadge: "SAVE 33%",
     popular: true,
     description: "Best choice for complete home transformations.",
   },
@@ -55,6 +60,8 @@ const PACKAGES: CreditPackage[] = [
     name: "Elite Pack",
     credits: 50,
     price: "Rs. 1,249",
+    unitPrice: "Rs. 25 / design",
+    savingsBadge: "SAVE 50%",
     bestValue: true,
     description: "For design professionals and heavy creators.",
   },
@@ -254,6 +261,7 @@ export const StoreModal: React.FC<StoreModalProps> = ({
                     <Text style={styles.pkgCreditsInfo}>
                       {pkg.credits} Credits • Design {pkg.credits} times
                     </Text>
+                    <Text style={styles.pkgUnitPrice}>{pkg.unitPrice}</Text>
                     <Text style={styles.pkgDescription}>{pkg.description}</Text>
                   </View>
 
@@ -427,6 +435,53 @@ const styles = StyleSheet.create({
   },
   pkgPriceSection: {
     alignItems: "flex-end",
+  },
+  creditsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
+  savingsTag: {
+    backgroundColor: "rgba(245, 158, 11, 0.2)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#F59E0B",
+  },
+  savingsTagText: {
+    color: "#F59E0B",
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  pkgUnitPrice: {
+    color: "#A89F97",
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  trustContainer: {
+    marginTop: 8,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.05)",
+    gap: 8,
+  },
+  trustItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  trustIcon: {
+    fontSize: 14,
+  },
+  trustText: {
+    color: "#A89F97",
+    fontSize: 12,
+    fontWeight: "500",
   },
   pkgCreditsInfo: {
     color: "#FB923C", // Green/Teal accent color

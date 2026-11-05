@@ -12,14 +12,19 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
-import CustomAlert from "../components/CustomAlert"; // <--- Import CustomAlert
+import CustomAlert from "../components/CustomAlert";
 import { useAuth } from "../context/AuthContext";
 import { GoogleIcon } from "../components/Icons";
 
 const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const { signInWithGoogle } = useAuth();
@@ -40,77 +45,70 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setAlertConfig({ title, message, type });
     setAlertVisible(true);
   };
-  // ---------------------------
 
   const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
     try {
+      setGoogleLoading(true);
       await signInWithGoogle();
-    } catch (err: any) {
-      if (err.message && !err.message.includes("cancel")) {
-        showAlert("Google Login Failed", err.message || "Could not log in with Google.", "error");
+    } catch (error: any) {
+      if (error.message?.includes("CANCELED") || error.code === "-5") {
+        return;
       }
+      showAlert("Google Sign-In Error", error.message || "Could not sign in with Google", "error");
     } finally {
       setGoogleLoading(false);
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      showAlert("Email Required", "Please enter your email address to reset password.", "error");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: "aihomedecoratornative://reset-password",
+      });
+
+      if (error) {
+        showAlert("Reset Failed", error.message, "error");
+      } else {
+        showAlert(
+          "Password Reset Sent",
+          "Check your email for the password reset link.",
+          "success"
+        );
+      }
+    } catch (err: any) {
+      showAlert("Error", err.message || "An unexpected error occurred.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogin = async () => {
     if (!email || !password) {
-      showAlert(
-        "Missing Information",
-        "Please enter both your email and password.",
-        "error"
-      );
+      showAlert("Missing Fields", "Please enter both email and password.", "error");
       return;
     }
 
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
+        email,
+        password,
       });
 
       if (error) {
-        showAlert("Login Failed", error.message, "error");
-      }
-      // Success is handled by AuthContext automatically
-    } catch (error: any) {
-      showAlert(
-        "Error",
-        error.message || "An unexpected error occurred",
-        "error"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- Forgot Password Logic ---
-  const handleForgotPassword = async () => {
-    if (!email) {
-      showAlert(
-        "Email Required",
-        "Please enter your email address first so we can send you a reset link.",
-        "error"
-      );
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "aihomedecoratornative://reset-password", // Deep link (optional but recommended)
-      });
-
-      if (error) {
-        showAlert("Error", error.message, "error");
-      } else {
-        showAlert(
-          "Check Your Email",
-          `We have sent a password reset link to ${email}. Please check your inbox (and spam folder).`
-        );
+        let msg = error.message;
+        if (msg.includes("Invalid login credentials")) {
+          msg = "Incorrect email or password. Please try again.";
+        } else if (msg.includes("Email not confirmed")) {
+          msg = "Please confirm your email address before logging in.";
+        }
+        showAlert("Login Failed", msg, "error");
       }
     } catch (error: any) {
       showAlert("Error", error.message, "error");
@@ -118,7 +116,6 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setLoading(false);
     }
   };
-  // -----------------------------
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -126,28 +123,37 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Header & Logo */}
           <View style={styles.header}>
-            <Image
-              source={require("../assets/images/icon.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <View style={styles.logoCard}>
+              <Image
+                source={require("../assets/images/logo-full.png")}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.subtitle}>
               Sign in to design your dream space
             </Text>
           </View>
 
+          {/* Form */}
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>Email Address</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  focusedInput === "email" && styles.inputFocused,
+                ]}
                 placeholder="hello@example.com"
-                placeholderTextColor="#64748B"
+                placeholderTextColor="#78716C"
                 value={email}
                 onChangeText={setEmail}
+                onFocus={() => setFocusedInput("email")}
+                onBlur={() => setFocusedInput(null)}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -156,54 +162,90 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="••••••••"
-                placeholderTextColor="#64748B"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+              <View style={styles.passwordWrapper}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.passwordInput,
+                    focusedInput === "password" && styles.inputFocused,
+                  ]}
+                  placeholder="••••••••"
+                  placeholderTextColor="#78716C"
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => setFocusedInput("password")}
+                  onBlur={() => setFocusedInput(null)}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeBtn}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#A8A29E"
+                  />
+                </TouchableOpacity>
+              </View>
+
               {/* Forgot Password Button */}
               <TouchableOpacity
                 onPress={handleForgotPassword}
                 style={{ alignSelf: "flex-end", marginTop: 8 }}
               >
-                <Text
-                  style={{ color: "#EA580C", fontSize: 13, fontWeight: "600" }}
-                >
+                <Text style={styles.forgotPasswordText}>
                   Forgot Password?
                 </Text>
               </TouchableOpacity>
             </View>
 
+            {/* Sign In CTA Button */}
             <TouchableOpacity
               style={[styles.button, (loading || googleLoading) && styles.buttonDisabled]}
-              onPress={handleLogin}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                handleLogin();
+              }}
               disabled={loading || googleLoading}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <View style={styles.loadingWrapper}>
+                  <ActivityIndicator color="#FFFFFF" />
+                </View>
               ) : (
-                <Text style={styles.buttonText}>Sign In</Text>
+                <LinearGradient
+                  colors={["#EA580C", "#D97706"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.gradientBtn}
+                >
+                  <Text style={styles.buttonText}>Sign In</Text>
+                </LinearGradient>
               )}
             </TouchableOpacity>
 
+            {/* Separator */}
             <View style={styles.separatorContainer}>
               <View style={styles.separatorLine} />
               <Text style={styles.separatorText}>OR</Text>
               <View style={styles.separatorLine} />
             </View>
 
+            {/* Google Login */}
             <TouchableOpacity
               style={[styles.googleButton, (loading || googleLoading) && styles.googleButtonDisabled]}
-              onPress={handleGoogleLogin}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                handleGoogleLogin();
+              }}
               disabled={loading || googleLoading}
               activeOpacity={0.8}
             >
               {googleLoading ? (
-                <ActivityIndicator color="#F8FAFC" />
+                <ActivityIndicator color="#FFFBF5" />
               ) : (
                 <>
                   <GoogleIcon style={styles.googleIcon} />
@@ -217,8 +259,7 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               style={styles.linkContainer}
             >
               <Text style={styles.linkText}>
-                New here?{" "}
-                <Text style={styles.linkAccent}>Create an account</Text>
+                New here? <Text style={styles.linkAccent}>Create an account</Text>
               </Text>
             </TouchableOpacity>
           </View>
@@ -243,7 +284,6 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         </ScrollView>
 
-        {/* --- Custom Alert Component --- */}
         <CustomAlert
           visible={alertVisible}
           title={alertConfig.title}
@@ -259,7 +299,7 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#0F172A",
+    backgroundColor: "#0A0806",
   },
   container: {
     flex: 1,
@@ -271,25 +311,37 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 28,
+  },
+  logoCard: {
+    width: 150,
+    height: 105,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+    padding: 8,
+    shadowColor: "#EA580C",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 6,
   },
   logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 24,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
+    width: "100%",
+    height: "100%",
   },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: "800",
-    color: "#F8FAFC",
-    marginBottom: 8,
+    color: "#FFFBF5",
+    marginBottom: 6,
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#94A3B8",
+    fontSize: 15,
+    color: "#A89F97",
     textAlign: "center",
   },
   form: {
@@ -298,94 +350,129 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    color: "#CBD5E1",
+    color: "#E2D9D2",
     marginBottom: 8,
     marginLeft: 4,
+    letterSpacing: 0.2,
   },
   input: {
-    backgroundColor: "#1E293B",
-    color: "#F8FAFC",
+    backgroundColor: "rgba(38, 28, 22, 0.45)",
+    color: "#FFFBF5",
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#334155",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.08)",
     paddingHorizontal: 16,
     height: 56,
-    fontSize: 16,
+    fontSize: 15,
+  },
+  inputFocused: {
+    borderColor: "#EA580C",
+    backgroundColor: "rgba(234, 88, 12, 0.06)",
+  },
+  passwordWrapper: {
+    position: "relative",
+    justifyContent: "center",
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeBtn: {
+    position: "absolute",
+    right: 14,
+    height: 56,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 6,
+  },
+  forgotPasswordText: {
+    color: "#FB923C",
+    fontSize: 13,
+    fontWeight: "600",
   },
   button: {
-    backgroundColor: "#EA580C",
     height: 56,
     borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 12,
+    overflow: "hidden",
+    marginTop: 10,
     marginBottom: 16,
     shadowColor: "#EA580C",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
     shadowRadius: 12,
-    elevation: 8,
+    elevation: 6,
+  },
+  gradientBtn: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingWrapper: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#EA580C",
+    alignItems: "center",
+    justifyContent: "center",
   },
   buttonDisabled: {
-    backgroundColor: "#334155",
-    opacity: 0.7,
+    opacity: 0.6,
   },
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
+    letterSpacing: 0.3,
   },
   separatorContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 16,
+    marginVertical: 14,
   },
   separatorLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#334155",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
   },
   separatorText: {
-    color: "#64748B",
-    paddingHorizontal: 12,
-    fontSize: 14,
-    fontWeight: "600",
+    color: "#A89F97",
+    paddingHorizontal: 14,
+    fontSize: 12,
+    fontWeight: "700",
   },
   googleButton: {
     flexDirection: "row",
-    backgroundColor: "#1E293B",
-    height: 56,
-    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(38, 28, 22, 0.4)",
+    borderRadius: 16,
+    height: 56,
     borderWidth: 1,
-    borderColor: "#334155",
-    marginBottom: 24,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    marginBottom: 20,
   },
   googleButtonDisabled: {
-    opacity: 0.5,
-    backgroundColor: "#0F172A",
+    opacity: 0.6,
   },
   googleIcon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   googleButtonText: {
-    color: "#F8FAFC",
-    fontSize: 16,
-    fontWeight: "700",
+    color: "#FFFBF5",
+    fontSize: 15,
+    fontWeight: "600",
   },
   linkContainer: {
     alignItems: "center",
     padding: 8,
   },
   linkText: {
-    color: "#94A3B8",
-    fontSize: 15,
+    color: "#A89F97",
+    fontSize: 14,
   },
   linkAccent: {
     color: "#FB923C",
@@ -394,16 +481,15 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: "auto",
     alignItems: "center",
-    paddingTop: 24,
+    paddingTop: 20,
   },
   legalText: {
-    color: "#64748B",
+    color: "#78716C",
     fontSize: 12,
     textAlign: "center",
-    lineHeight: 18,
   },
   legalLink: {
-    color: "#94A3B8",
+    color: "#A89F97",
     textDecorationLine: "underline",
   },
 });
