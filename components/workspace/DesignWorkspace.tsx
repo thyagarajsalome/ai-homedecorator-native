@@ -22,6 +22,7 @@ interface DesignWorkspaceProps {
   sourceImage: string;
   credits: number;
   onReset: () => void;
+  initialStudioCategory?: StudioCategory;
   onGenerate: (
     prompt: string,
     roomType: string,
@@ -77,10 +78,17 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
   sourceImage,
   credits,
   onReset,
+  initialStudioCategory = "interior",
   onGenerate,
 }) => {
-  const [activeStudioTab, setActiveStudioTab] = useState<StudioCategory>("interior");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("full_redesign");
+  const [activeStudioTab, setActiveStudioTab] = useState<StudioCategory>(initialStudioCategory);
+  const defaultCategory = React.useMemo(() => {
+    const match = ELEMENT_CATEGORIES.find(
+      (cat) => cat.studioGroup === initialStudioCategory || (!cat.studioGroup && initialStudioCategory === "interior")
+    );
+    return match ? match.id : "full_redesign";
+  }, [initialStudioCategory]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(defaultCategory);
   const [selectedChoice, setSelectedChoice] = useState<SubCategoryChoice | null>(null);
   const [selectedAtmosphere, setSelectedAtmosphere] = useState<
     "daylight" | "golden_hour" | "evening_2700k" | "twilight"

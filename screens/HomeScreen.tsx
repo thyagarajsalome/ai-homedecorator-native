@@ -33,6 +33,7 @@ import ImageUploader from "../components/workspace/ImageUploader";
 import InspirationGallery from "../components/workspace/InspirationGallery";
 import GeneratedImageDisplay from "../components/workspace/GeneratedImageDisplay";
 import DesignWorkspace from "../components/workspace/DesignWorkspace";
+import { StudioCategory } from "../types";
 
 // Design Tokens
 import { Colors, Typography, Spacing, BorderRadius } from "../theme/designTokens";
@@ -48,6 +49,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   // Phase State
   const [sourceImage, setSourceImage] = useState<string | null>(null);
+  const [presetStudioCategory, setPresetStudioCategory] = useState<StudioCategory | undefined>(undefined);
   const [isCreditAlertVisible, setIsCreditAlertVisible] = useState(false);
   const [isCelebrationVisible, setIsCelebrationVisible] = useState(false);
   const [isStoreVisible, setIsStoreVisible] = useState(false);
@@ -108,6 +110,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const handleResetWorkspace = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSourceImage(null);
+    setPresetStudioCategory(undefined);
     setActiveDisplayImage(null);
     setPremiumHdBackupUrl(null);
     setHasUnlockedPremiumHd(false);
@@ -267,8 +270,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               setSourceImage(img);
             }} />
-            <InspirationGallery onSelectPreset={(img) => {
+            <InspirationGallery onSelectPreset={(img, category) => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setPresetStudioCategory(category);
               setSourceImage(img);
             }} />
           </Animated.View>
@@ -278,6 +282,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <DesignWorkspace
               sourceImage={sourceImage}
               credits={credits}
+              initialStudioCategory={presetStudioCategory}
               onReset={handleResetWorkspace}
               onGenerate={handleGenerate}
             />
