@@ -15,10 +15,17 @@ export interface DecorateRoomResponse {
   viralVideo: string | null;
 }
 
+export interface DecorateRoomOptions {
+  category?: "interior" | "exterior" | "landscape" | "commercial";
+  atmosphere?: "daylight" | "golden_hour" | "evening_2700k" | "twilight";
+  transformationStrength?: "subtle" | "balanced" | "overhaul";
+}
+
 export const decorateRoom = async (
   imageUri: string,
   stylePrompt: string,
-  roomType?: string
+  roomType?: string,
+  options?: DecorateRoomOptions
 ): Promise<DecorateRoomResponse> => {
   try {
     // 1. Get/Refresh user session
@@ -102,6 +109,13 @@ export const decorateRoom = async (
     // Append text fields (Match keys expected by server.js)
     formData.append("designPrompt", stylePrompt);
     formData.append("roomType", roomType || "Room");
+    formData.append("category", options?.category || "interior");
+    if (options?.atmosphere) {
+      formData.append("atmosphere", options.atmosphere);
+    }
+    if (options?.transformationStrength) {
+      formData.append("transformationStrength", options.transformationStrength);
+    }
     // Native app currently only does 'style' mode based on your UI,
     // but we pass it to match backend logic.
     formData.append("designMode", "style");

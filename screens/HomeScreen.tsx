@@ -114,7 +114,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     resetGeneration();
   };
 
-  const handleGenerate = async (prompt: string, roomType: string, cost: number, styleName: string) => {
+  const handleGenerate = async (
+    prompt: string,
+    roomType: string,
+    cost: number,
+    styleName: string,
+    options?: any
+  ) => {
     if (credits < cost) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       setIsStoreVisible(true);
@@ -123,7 +129,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setGenerationStyleName(styleName);
-    const result = await generateDesign(sourceImage!, prompt, roomType);
+    const result = await generateDesign(sourceImage!, prompt, roomType, options);
 
     if (result !== false) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

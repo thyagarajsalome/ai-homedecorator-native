@@ -12,8 +12,8 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 
-import { SelectionCategory, SubCategoryChoice } from "../../types";
-import { ELEMENT_CATEGORIES } from "../../constants";
+import { SelectionCategory, SubCategoryChoice, StudioCategory } from "../../types";
+import { ELEMENT_CATEGORIES, STUDIO_TABS, ATMOSPHERE_OPTIONS } from "../../constants";
 import { RoomTypeBottomSheet } from "../RoomTypeBottomSheet";
 import { DecorateIcon, AccordionChevronIcon } from "../Icons";
 import { Colors, Spacing, BorderRadius, Typography } from "../../theme/designTokens";
@@ -22,46 +22,56 @@ interface DesignWorkspaceProps {
   sourceImage: string;
   credits: number;
   onReset: () => void;
-  onGenerate: (prompt: string, roomType: string, cost: number, styleName: string) => void;
+  onGenerate: (
+    prompt: string,
+    roomType: string,
+    cost: number,
+    styleName: string,
+    options?: {
+      category?: StudioCategory;
+      atmosphere?: "daylight" | "golden_hour" | "evening_2700k" | "twilight";
+    }
+  ) => void;
 }
-
-
 
 const CATEGORY_TIPS: Record<string, { title: string; message: string }> = {
   full_redesign: {
-    title: "Full Room Design Guide 🌍",
-    message: "Try to take a wide-angle photo of the room from a corner or doorway to capture the entire layout."
+    title: "Full Room Design Guide 🛋️",
+    message: "Take a wide-angle photo from a corner or doorway to capture the entire layout and perspective."
+  },
+  exterior_facade: {
+    title: "Architecture & Facade Guide 🏡",
+    message: "Capture the full front elevation of the house or building straight-on or from a clean 3/4 angle."
+  },
+  landscape_garden: {
+    title: "Landscape & Garden Guide 🌿",
+    message: "Capture the entire yard, patio, or lawn from a slightly elevated vantage point to show terrain."
+  },
+  commercial_spaces: {
+    title: "Commercial & Cafe Guide 🏢",
+    message: "Capture the storefront or wide open commercial space showing entrance and structural pillars."
+  },
+  virtual_staging: {
+    title: "Virtual Staging Guide 📸",
+    message: "Capture the empty room showing wall-to-wall floor space and primary windows for optimal staging."
   },
   kitchen: {
     title: "Kitchen Guide 🍳",
-    message: "Try to take the photo from a corner to capture the full kitchen counter and island."
+    message: "Capture the kitchen counter, island, and cabinets in natural lighting."
   },
   bathroom: {
     title: "Bathroom Guide 🛁",
-    message: "Try to take the photo capturing the vanity, mirror, and shower area clearly."
+    message: "Capture the vanity, mirror, and shower or tub area clearly."
   },
   flooring: {
     title: "Flooring Guide 🪵",
-    message: "Make sure the photo is covering the maximum floor area possible."
+    message: "Make sure the photo covers maximum visible floor plane area."
   },
   wall_paint: {
-    title: "Wall Paint Guide 🎨",
-    message: "Try to take a photo of a wall that is clearly visible in natural daylight."
-  },
-  lighting_mood: {
-    title: "Lighting Guide 💡",
-    message: "Make sure you take the photo from a good distance at eye level."
-  },
-  windows_blinds: {
-    title: "Window & Blinds Guide 🪟",
-    message: "Try to cover only the window and blinds from a good distance."
-  },
-  outdoor_patio: {
-    title: "Outdoor Guide 🏡",
-    message: "Try to capture the entire deck, patio, or outdoor area from a wider angle."
+    title: "Wall Finishes Guide 🎨",
+    message: "Ensure the vertical walls are clearly visible in even lighting."
   }
 };
-
 
 const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
   sourceImage,
@@ -69,16 +79,35 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
   onReset,
   onGenerate,
 }) => {
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
-    ELEMENT_CATEGORIES[0].id
-  );
+  const [activeStudioTab, setActiveStudioTab] = useState<StudioCategory>("interior");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("full_redesign");
   const [selectedChoice, setSelectedChoice] = useState<SubCategoryChoice | null>(null);
+  const [selectedAtmosphere, setSelectedAtmosphere] = useState<
+    "daylight" | "golden_hour" | "evening_2700k" | "twilight"
+  >("daylight");
   const [customRefinement, setCustomRefinement] = useState<string>("");
   const [roomType, setRoomType] = useState<string>("");
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
 
   const creditCost = 1;
   const hasEnoughCredits = credits >= creditCost;
+
+  // Filter categories by the active Studio Tab (Interiors, Architecture, Landscapes, Commercial)
+  const filteredCategories = ELEMENT_CATEGORIES.filter(
+    (cat) => cat.studioGroup === activeStudioTab || (!cat.studioGroup && activeStudioTab === "interior")
+  );
+
+  const handleStudioTabSelect = (tabId: StudioCategory) => {
+    Haptics.selectionAsync();
+    setActiveStudioTab(tabId);
+    const nextCategories = ELEMENT_CATEGORIES.filter(
+      (cat) => cat.studioGroup === tabId || (!cat.studioGroup && tabId === "interior")
+    );
+    if (nextCategories.length > 0) {
+      setSelectedCategoryId(nextCategories[0].id);
+    }
+    setSelectedChoice(null);
+  };
 
   const handleCategorySelect = (id: string) => {
     Haptics.selectionAsync();
@@ -91,8 +120,15 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
     setSelectedChoice(choice);
   };
 
+  const handleAtmosphereSelect = (
+    atm: "daylight" | "golden_hour" | "evening_2700k" | "twilight"
+  ) => {
+    Haptics.selectionAsync();
+    setSelectedAtmosphere(atm);
+  };
+
   const handleDecoratePress = () => {
-    if (selectedCategoryId === "full_redesign" && !roomType) {
+    if (activeStudioTab === "interior" && selectedCategoryId === "full_redesign" && !roomType) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert("Select Room Type", "Please select a Room Type to continue.");
       return;
@@ -100,40 +136,53 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
 
     if (!selectedChoice) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      Alert.alert("Select Preset Style", "Please select a style card from the carousel.");
+      Alert.alert("Select Preset Style", "Please select a design style card from the carousel.");
       return;
     }
 
-    const category = ELEMENT_CATEGORIES.find(c => c.id === selectedCategoryId);
+    const category = ELEMENT_CATEGORIES.find((c) => c.id === selectedCategoryId);
     const choicePrompt = selectedChoice.promptSuffix;
     const refinement = customRefinement.trim();
     const guardrail = category?.guardrail || "";
 
-    // Compiling the final prompt: "Task: Perform an image-to-image modification specializing in home interiors. Target output: [Selected Item Prompt Suffix]." + (optional refinement text) + " Contextual Guardrails: [Category Preservation Prompt Guardrail] High-end, hyper-realistic architectural layout projection presentation."
-    let decorationPrompt = `Task: Perform an image-to-image modification specializing in home interiors. Target output: ${choicePrompt}.`;
+    let decorationPrompt = `Target output: ${choicePrompt}.`;
     if (refinement) {
-      decorationPrompt += ` Additional detailed requirements: ${refinement}.`;
+      decorationPrompt += ` Custom refinement: ${refinement}.`;
     }
-    decorationPrompt += ` Contextual Guardrails: ${guardrail} High-end, hyper-realistic architectural layout projection presentation.`;
+    decorationPrompt += ` Contextual Guardrails: ${guardrail}`;
 
-    const decorationStyleName = `${category?.name || "Design"} - ${selectedChoice.name}`;
-    const finalRoomType = selectedCategoryId === "full_redesign" ? roomType : `${category?.name || "Design"} Modification`;
+    const studioName = STUDIO_TABS.find((t) => t.id === activeStudioTab)?.name || "Design";
+    const decorationStyleName = `${studioName} • ${selectedChoice.name}`;
+    
+    let finalRoomType = "Space";
+    if (activeStudioTab === "interior") {
+      finalRoomType = selectedCategoryId === "full_redesign" ? (roomType || "Room") : (category?.name || "Interior Room");
+    } else if (activeStudioTab === "exterior") {
+      finalRoomType = "House Facade / Exterior Architecture";
+    } else if (activeStudioTab === "landscape") {
+      finalRoomType = "Backyard / Landscape Grounds";
+    } else if (activeStudioTab === "commercial") {
+      finalRoomType = selectedCategoryId === "virtual_staging" ? "Virtual Staging Space" : "Commercial Space";
+    }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onGenerate(decorationPrompt, finalRoomType, creditCost, decorationStyleName);
+    onGenerate(decorationPrompt, finalRoomType, creditCost, decorationStyleName, {
+      category: activeStudioTab,
+      atmosphere: selectedAtmosphere,
+    });
   };
 
-  const activeCategory = ELEMENT_CATEGORIES.find(c => c.id === selectedCategoryId);
+  const activeCategory = ELEMENT_CATEGORIES.find((c) => c.id === selectedCategoryId) || filteredCategories[0];
 
   return (
     <View style={styles.workspace}>
-      {/* Step 1: Your Room */}
+      {/* Step 1: Your Space */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.stepBadge}>
             <Text style={styles.stepText}>1</Text>
           </View>
-          <Text style={styles.cardTitle}>Your Room</Text>
+          <Text style={styles.cardTitle}>Your Uploaded Space</Text>
         </View>
 
         <View style={styles.previewContainer}>
@@ -143,7 +192,7 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
           </TouchableOpacity>
         </View>
 
-        {selectedCategoryId === "full_redesign" && (
+        {activeStudioTab === "interior" && selectedCategoryId === "full_redesign" && (
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Room Type</Text>
             <TouchableOpacity
@@ -154,7 +203,7 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
               }}
             >
               <Text style={[styles.customPickerText, !roomType && { color: Colors.text.disabled }]}>
-                {roomType || "Select Room Type..."}
+                {roomType || "Select Room Type (Living Room, Bedroom...)"}
               </Text>
               <AccordionChevronIcon color={Colors.text.muted} />
             </TouchableOpacity>
@@ -169,48 +218,85 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
         )}
       </View>
 
-      {/* Step 2: Configure Design */}
+      {/* Step 2: Configure Studio Design */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.stepBadge}>
             <Text style={styles.stepText}>2</Text>
           </View>
-          <Text style={styles.cardTitle}>Configure Design</Text>
+          <Text style={styles.cardTitle}>Configure Studio Design</Text>
         </View>
 
-        {/* Master Category Selector */}
-        <Text style={styles.sectionLabel}>Select Element</Text>
+        {/* 1. Master Studio Tabs (Interiors, Architecture, Landscapes, Commercial) */}
+        <Text style={styles.sectionLabel}>Select Design Discipline</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScroll}
+          contentContainerStyle={styles.studioTabsScroll}
         >
-          {ELEMENT_CATEGORIES.map((cat) => {
-            const isSelected = selectedCategoryId === cat.id;
+          {STUDIO_TABS.map((tab) => {
+            const isSelected = activeStudioTab === tab.id;
             return (
               <TouchableOpacity
-                key={cat.id}
+                key={tab.id}
                 style={[
-                  styles.categoryTab,
-                  isSelected && styles.categoryTabActive,
+                  styles.studioTab,
+                  isSelected && styles.studioTabActive,
                 ]}
-                onPress={() => handleCategorySelect(cat.id)}
+                onPress={() => handleStudioTabSelect(tab.id)}
                 activeOpacity={0.8}
               >
+                <Text style={styles.studioTabIcon}>{tab.icon}</Text>
                 <Text
                   style={[
-                    styles.categoryText,
-                    isSelected && styles.categoryTextActive,
+                    styles.studioTabText,
+                    isSelected && styles.studioTabTextActive,
                   ]}
                 >
-                  {cat.name}
+                  {tab.name}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
 
-        {/* Dynamic Category Photo Guideline Banner */}
+        {/* 2. Sub-Category Selector */}
+        {filteredCategories.length > 1 && (
+          <>
+            <Text style={styles.sectionLabel}>Select Feature</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryScroll}
+            >
+              {filteredCategories.map((cat) => {
+                const isSelected = selectedCategoryId === cat.id;
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[
+                      styles.categoryTab,
+                      isSelected && styles.categoryTabActive,
+                    ]}
+                    onPress={() => handleCategorySelect(cat.id)}
+                    activeOpacity={0.8}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryText,
+                        isSelected && styles.categoryTextActive,
+                      ]}
+                    >
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </>
+        )}
+
+        {/* Category Guideline Banner */}
         {activeCategory && CATEGORY_TIPS[selectedCategoryId] && (
           <View style={styles.guideBanner}>
             <View style={styles.guideHeader}>
@@ -225,8 +311,8 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
           </View>
         )}
 
-        {/* Sub-choice Carousel */}
-        <Text style={styles.sectionLabel}>Choose Preset Style</Text>
+        {/* 3. Preset Style Carousel */}
+        <Text style={styles.sectionLabel}>Choose Architectural Style</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -249,13 +335,16 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
                     <Text style={styles.checkmarkText}>✓</Text>
                   </View>
                 )}
+                {choice.thumbnail ? (
+                  <Image source={{ uri: choice.thumbnail }} style={styles.choiceThumbnail} />
+                ) : null}
                 <View style={styles.choiceTextContainer}>
                   <Text
                     style={[
                       styles.choiceName,
                       isSelected && styles.choiceNameActive,
                     ]}
-                    numberOfLines={3}
+                    numberOfLines={2}
                   >
                     {choice.name}
                   </Text>
@@ -265,48 +354,71 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
           })}
         </ScrollView>
 
-        {/* Text Refinement */}
+        {/* 4. Atmosphere & Lighting Drawer (Gemini Simulation) */}
+        <Text style={styles.sectionLabel}>Atmosphere & Lighting</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.atmosphereScroll}
+        >
+          {ATMOSPHERE_OPTIONS.map((atm) => {
+            const isSelected = selectedAtmosphere === atm.id;
+            return (
+              <TouchableOpacity
+                key={atm.id}
+                style={[
+                  styles.atmospherePill,
+                  isSelected && styles.atmospherePillActive,
+                ]}
+                onPress={() => handleAtmosphereSelect(atm.id)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.atmosphereIcon}>{atm.icon}</Text>
+                <Text
+                  style={[
+                    styles.atmosphereText,
+                    isSelected && styles.atmosphereTextActive,
+                  ]}
+                >
+                  {atm.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Custom Refinement */}
         <View style={styles.refinementContainer}>
-          <Text style={styles.sectionLabel}>Text Refinement (Optional)</Text>
+          <Text style={styles.sectionLabel}>Custom Details (Optional)</Text>
           <TextInput
             style={styles.textArea}
-            placeholder="Add custom details (e.g., 'matte finish, light beige tones, clean finish')"
-            placeholderTextColor={Colors.text.disabled}
-            multiline
+            placeholder="e.g. Add an olive tree, warm beige linen sofa, brass pendant lights, travertine coffee table..."
+            placeholderTextColor={Colors.text.muted}
             value={customRefinement}
             onChangeText={setCustomRefinement}
-            maxLength={120}
+            multiline
+            numberOfLines={3}
           />
-          <Text style={styles.charCount}>{customRefinement.length}/120</Text>
         </View>
-      </View>
 
-      {/* Generate Button */}
-      <View style={styles.generateSection}>
+        {/* Primary CTA */}
         <TouchableOpacity
-          style={styles.generateBtn}
+          style={[styles.decorateBtn, !hasEnoughCredits && styles.decorateBtnDisabled]}
           onPress={handleDecoratePress}
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={["#EA580C", "#D97706"]}
+            colors={hasEnoughCredits ? ["#EA580C", "#D97706"] : ["#475569", "#334155"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.generateBtnInner}
+            style={styles.gradientBtn}
           >
-            <DecorateIcon style={{ marginRight: Spacing.sm }} color={Colors.white} />
-            <Text style={styles.generateBtnText}>Generate Design</Text>
-            <View style={styles.creditBadge}>
-              <Text style={styles.creditBadgeText}>{creditCost}</Text>
-            </View>
+            <DecorateIcon color={Colors.white} />
+            <Text style={styles.decorateBtnText}>
+              {hasEnoughCredits ? "Transform Space • 1 Credit" : "Get Credits to Transform"}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
-
-        {!hasEnoughCredits ? (
-          <Text style={styles.lowCreditText}>⚠️ Out of credits — Click Generate to purchase more</Text>
-        ) : (
-          <Text style={styles.balanceText}>You have {credits} credits available</Text>
-        )}
       </View>
     </View>
   );
@@ -314,148 +426,217 @@ const DesignWorkspace: React.FC<DesignWorkspaceProps> = ({
 
 const styles = StyleSheet.create({
   workspace: {
-    gap: Spacing["2xl"]
+    gap: Spacing.xl,
+    paddingBottom: Spacing["4xl"],
   },
   card: {
-    backgroundColor: Colors.background.card,
-    borderRadius: BorderRadius["3xl"],
-    padding: Spacing["2xl"],
+    backgroundColor: "rgba(38, 28, 22, 0.45)",
+    borderRadius: BorderRadius["2xl"],
+    padding: Spacing.xl,
     borderWidth: 1,
-    borderColor: Colors.border.default,
+    borderColor: "rgba(255, 255, 255, 0.08)",
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: Spacing.xl,
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   stepBadge: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.brand.primary,
+    backgroundColor: "#EA580C",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: Spacing.md,
   },
   stepText: {
     color: Colors.white,
+    fontSize: Typography.size.sm,
     fontWeight: Typography.weight.bold,
-    fontSize: Typography.size.base,
   },
   cardTitle: {
     fontSize: Typography.size.lg,
     fontWeight: Typography.weight.bold,
-    color: Colors.text.primary,
+    color: "#FFFBF5",
   },
   previewContainer: {
-    height: 200,
+    position: "relative",
+    width: "100%",
+    height: 220,
     borderRadius: BorderRadius.xl,
     overflow: "hidden",
-    marginBottom: Spacing.xl,
-    position: "relative",
+    backgroundColor: Colors.background.elevated,
   },
   previewImage: {
     width: "100%",
-    height: "100%"
+    height: "100%",
+    resizeMode: "cover",
   },
   retakeBtn: {
     position: "absolute",
-    bottom: 12,
-    right: 12,
-    backgroundColor: Colors.overlay.dark,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.sm,
+    bottom: Spacing.md,
+    right: Spacing.md,
+    backgroundColor: "rgba(10, 8, 6, 0.8)",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
   },
   retakeText: {
-    color: Colors.white,
+    color: "#FFFBF5",
+    fontSize: Typography.size.xs,
+    fontWeight: Typography.weight.bold,
+  },
+  inputContainer: {
+    marginTop: Spacing.lg,
+  },
+  inputLabel: {
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semiBold,
-  },
-  inputContainer: {},
-  inputLabel: {
     color: Colors.text.secondary,
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.semiBold,
-    marginBottom: Spacing.sm,
-    marginLeft: 4,
+    marginBottom: Spacing.xs,
   },
   customPickerButton: {
-    backgroundColor: Colors.background.input,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border.subtle,
-    height: 52,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    backgroundColor: "rgba(21, 14, 11, 0.8)",
+    borderRadius: BorderRadius.xl,
     paddingHorizontal: Spacing.lg,
-    marginTop: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
   },
   customPickerText: {
     color: Colors.text.primary,
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.medium,
+    fontSize: Typography.size.base,
   },
   sectionLabel: {
-    fontSize: Typography.size.base,
+    fontSize: Typography.size.sm + 1,
     fontWeight: Typography.weight.semiBold,
-    color: Colors.text.secondary,
-    marginBottom: Spacing.md,
+    color: "#E2D9D2",
+    marginBottom: Spacing.sm,
     marginTop: Spacing.md,
+  },
+  studioTabsScroll: {
+    paddingVertical: Spacing.xs,
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  studioTab: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(21, 14, 11, 0.8)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    marginRight: Spacing.xs,
+    gap: 6,
+  },
+  studioTabActive: {
+    backgroundColor: "rgba(234, 88, 12, 0.18)",
+    borderColor: "#EA580C",
+  },
+  studioTabIcon: {
+    fontSize: 16,
+  },
+  studioTabText: {
+    color: "#A89F97",
+    fontSize: Typography.size.sm + 1,
+    fontWeight: Typography.weight.semiBold,
+  },
+  studioTabTextActive: {
+    color: "#FFFBF5",
+    fontWeight: Typography.weight.bold,
   },
   categoryScroll: {
     paddingVertical: Spacing.xs,
     gap: Spacing.sm,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   categoryTab: {
-    backgroundColor: Colors.background.input,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: BorderRadius.full,
+    backgroundColor: "rgba(21, 14, 11, 0.6)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    borderColor: Colors.border.subtle,
+    borderColor: "rgba(255, 255, 255, 0.06)",
     marginRight: Spacing.xs,
-    justifyContent: "center",
-    alignItems: "center",
   },
   categoryTabActive: {
-    backgroundColor: Colors.brand.primary,
-    borderColor: Colors.brand.primary,
+    backgroundColor: "#EA580C",
+    borderColor: "#EA580C",
   },
   categoryText: {
-    color: Colors.text.secondary,
-    fontSize: Typography.size.sm + 1,
+    color: "#A89F97",
+    fontSize: Typography.size.sm,
     fontWeight: Typography.weight.medium,
   },
   categoryTextActive: {
     color: Colors.white,
     fontWeight: Typography.weight.bold,
   },
+  guideBanner: {
+    backgroundColor: "rgba(234, 88, 12, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(234, 88, 12, 0.25)",
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.md,
+    marginVertical: Spacing.sm,
+  },
+  guideHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    marginBottom: 4,
+  },
+  guideIcon: {
+    fontSize: 14,
+  },
+  guideBannerTitle: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.bold,
+    color: "#FB923C",
+  },
+  guideBannerText: {
+    fontSize: Typography.size.xs + 1,
+    color: "#E2D9D2",
+    lineHeight: 18,
+  },
   choicesCarousel: {
     paddingVertical: Spacing.xs,
     gap: Spacing.md,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   choiceCard: {
-    width: 130,
-    height: 72,
-    backgroundColor: Colors.background.input,
+    width: 140,
+    backgroundColor: "rgba(21, 14, 11, 0.8)",
     borderRadius: BorderRadius.xl,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border.subtle,
-    justifyContent: "center",
-    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    overflow: "hidden",
     position: "relative",
   },
   choiceCardActive: {
-    borderColor: Colors.brand.primary,
-    backgroundColor: "rgba(99, 102, 241, 0.08)",
+    borderColor: "#EA580C",
+    backgroundColor: "rgba(234, 88, 12, 0.12)",
+    shadowColor: "#EA580C",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  choiceThumbnail: {
+    width: "100%",
+    height: 75,
+    resizeMode: "cover",
   },
   choiceTextContainer: {
-    flex: 1,
+    padding: Spacing.sm,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -463,122 +644,105 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 6,
     right: 6,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: Colors.brand.primary,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#EA580C",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10,
+    borderWidth: 1,
+    borderColor: Colors.white,
   },
   checkmarkText: {
     color: Colors.white,
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: "bold",
   },
   choiceName: {
-    color: Colors.text.secondary,
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
+    color: "#E2D9D2",
+    fontSize: Typography.size.xs + 1,
+    fontWeight: Typography.weight.semiBold,
     textAlign: "center",
   },
   choiceNameActive: {
-    color: Colors.white,
+    color: "#FFFBF5",
+    fontWeight: Typography.weight.bold,
+  },
+  atmosphereScroll: {
+    paddingVertical: Spacing.xs,
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  atmospherePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(21, 14, 11, 0.7)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    marginRight: Spacing.xs,
+    gap: 6,
+  },
+  atmospherePillActive: {
+    borderColor: "#F59E0B",
+    backgroundColor: "rgba(245, 158, 11, 0.15)",
+  },
+  atmosphereIcon: {
+    fontSize: 14,
+  },
+  atmosphereText: {
+    color: "#A89F97",
+    fontSize: Typography.size.xs + 1,
+    fontWeight: Typography.weight.medium,
+  },
+  atmosphereTextActive: {
+    color: "#F59E0B",
     fontWeight: Typography.weight.bold,
   },
   refinementContainer: {
-    marginTop: Spacing.md,
-  },
-  textArea: {
-    backgroundColor: Colors.background.input,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
-    color: Colors.text.primary,
-    height: 90,
-    textAlignVertical: "top",
-    borderWidth: 1,
-    borderColor: Colors.border.subtle,
-  },
-  charCount: {
-    color: Colors.text.disabled,
-    fontSize: Typography.size.xs,
-    textAlign: "right",
     marginTop: Spacing.xs,
   },
-  generateSection: {
-    marginTop: Spacing.md,
-    alignItems: "center",
+  textArea: {
+    backgroundColor: "rgba(21, 14, 11, 0.8)",
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.md,
+    color: "#FFFBF5",
+    height: 75,
+    textAlignVertical: "top",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    fontSize: Typography.size.sm,
   },
-  generateBtn: {
-    width: "100%",
+  decorateBtn: {
+    height: 56,
     borderRadius: BorderRadius.xl,
     overflow: "hidden",
+    marginTop: Spacing.lg,
+    shadowColor: "#EA580C",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  generateBtnInner: {
+  decorateBtnDisabled: {
+    opacity: 0.6,
+  },
+  gradientBtn: {
     width: "100%",
-    height: 60,
+    height: "100%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: Spacing.md,
   },
-  generateBtnDisabled: {
-    opacity: 0.5,
-  },
-  generateBtnText: {
+  decorateBtnText: {
     color: Colors.white,
-    fontSize: Typography.size.lg,
-    fontWeight: Typography.weight.bold,
-  },
-  creditBadge: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 10,
-  },
-  creditBadgeText: {
-    color: Colors.white,
-    fontWeight: Typography.weight.bold,
-    fontSize: Typography.size.sm,
-  },
-  balanceText: {
-    color: Colors.text.muted,
-    marginTop: Spacing.lg,
     fontSize: Typography.size.base,
-  },
-  lowCreditText: {
-    color: Colors.semantic.error,
-    marginTop: Spacing.lg,
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.semiBold,
-  },
-  guideBanner: {
-    backgroundColor: "rgba(139, 92, 246, 0.08)",
-    borderWidth: 1,
-    borderColor: Colors.border.brand,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-    marginTop: Spacing.xs,
-  },
-  guideHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  guideIcon: {
-    fontSize: 16,
-    marginRight: Spacing.xs,
-  },
-  guideBannerTitle: {
-    color: Colors.brand.primaryLight,
     fontWeight: Typography.weight.bold,
-    fontSize: Typography.size.sm + 1,
-  },
-  guideBannerText: {
-    color: Colors.text.secondary,
-    fontSize: Typography.size.sm + 1,
-    lineHeight: 18,
+    letterSpacing: 0.3,
   },
 });
 

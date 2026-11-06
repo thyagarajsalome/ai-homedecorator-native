@@ -177,38 +177,99 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
 
     const base64Image = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
 
-    // STEP 1: GEMINI PROMPT ENHANCEMENT
-    let finalPrompt = `A professionally designed ${roomType || 'room'} matching a ${designPrompt} style, interior architecture visualization, highly detailed, 8k resolution, photorealistic interior design photography`;
+    // Extract Category & Pro Studio Parameters
+    const category = (req.body.category || 'interior').toLowerCase(); // 'interior' | 'exterior' | 'landscape' | 'commercial'
+    const atmosphere = req.body.atmosphere || 'daylight'; // 'daylight' | 'golden_hour' | 'evening_2700k' | 'twilight'
+    const strength = req.body.transformationStrength || 'balanced'; // 'subtle' | 'balanced' | 'overhaul'
+
+    // STEP 1: GEMINI 3.8 FLASH SPATIAL SCENE BLUEPRINT SYNTHESIS
+    let finalPrompt = `A professionally designed ${roomType || 'space'} in a ${designPrompt} style, architectural visualization, photorealistic 8k`;
 
     if (USE_GEMINI_ENHANCEMENT && geminiApiKey) {
       try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const enhancementSystemInstruction = 
-          `You are an elite interior designer. Expand the user's design request into a detailed, descriptive prompt for an image generator. ` +
-          `Incorporate complementary color schemes, high-end furniture items, realistic illumination rendering techniques, and spatial material rules. ` +
-          `Keep your output description crisp and precise under 150 words. Do not include introductory remarks or meta commentary.`;
+        console.log(`🧠 Analyzing uploaded space with Gemini 3.8 Flash Vision [Category: ${category}]...`);
 
-        const analyticalPrompt = `Room Type: ${roomType || 'Room'}. Target Structural Style: ${designPrompt}. Context Details: ${roomDescription || 'None'}.`;
+        let roleInstruction = '';
+        if (category === 'exterior') {
+          roleInstruction = 'You are a world-class architectural exterior designer and facade renovation specialist. ' +
+            'Inspect the uploaded building photo for roofline geometry, window grid, facade wall proportions, and entrance pathways. ' +
+            'Write a precise, vivid visual transformation instruction describing new high-end materials (e.g. limestone, blackened wood slats, smooth stucco, metal finishes, glass railings), ' +
+            'while strictly maintaining the building outline, story count, and camera perspective.';
+        } else if (category === 'landscape') {
+          roleInstruction = 'You are a master landscape architect and luxury outdoor living designer. ' +
+            'Inspect the uploaded yard, garden, or patio photo for terrain, existing boundary fences, ground slope, and sunlight exposure. ' +
+            'Write a precise, vivid visual transformation instruction describing lush botanical planting, architectural hardscaping (patio pavers, decking, pergolas, fire pits, swimming pools), ' +
+            'while strictly maintaining the horizon and property boundaries.';
+        } else if (category === 'commercial') {
+          roleInstruction = 'You are an elite commercial interior architect and retail/hospitality designer. ' +
+            'Inspect the uploaded space for commercial flow, storefront glazing, and structural columns. ' +
+            'Write a precise visual transformation instruction describing commercial seating, counters, feature lighting fixtures, luxury hospitality materials, ' +
+            'while strictly preserving structural pillars, entries, and spatial boundaries.';
+        } else {
+          // Interior default
+          roleInstruction = 'You are an elite interior architect and luxury interior designer. ' +
+            'Inspect the uploaded room photo for ceiling height, structural walls, window positions, and vanishing points. ' +
+            'Write a concise, vivid visual transformation instruction describing high-end furniture, flooring (e.g. herringbone oak, microcement), ' +
+            'custom millwork, and tactile textures, while strictly preserving the room geometry, windows, and camera vantage point.';
+        }
 
-        const geminiResult = await model.generateContent([
-          { text: enhancementSystemInstruction },
-          { text: analyticalPrompt }
-        ]);
+        // Atmosphere / Lighting guidance
+        let lightingDirective = 'Natural bright diffused daylight pouring through openings with soft ambient bounce shadows.';
+        if (atmosphere === 'golden_hour') {
+          lightingDirective = 'Warm low-angle sunset golden hour illumination casting long gentle architectural shadows and warm highlights.';
+        } else if (atmosphere === 'evening_2700k') {
+          lightingDirective = 'Warm cozy 2700K ambient illumination: concealed indirect LED cove lighting, warm wall sconces, and soft accent pools of light.';
+        } else if (atmosphere === 'twilight') {
+          lightingDirective = 'Dramatic architectural twilight at blue hour, deep cobalt sky exterior contrasted with warm glowing interior lights.';
+        }
 
-        const enhancedText = geminiResult.response.text().trim();
-        if (enhancedText) finalPrompt = enhancedText;
+        const visionPrompt = `Target Space: ${roomType || 'Space'}. Desired Architectural Style: ${designPrompt}. ` +
+          `Atmosphere: ${lightingDirective}. Additional Context: ${roomDescription || 'None'}. ` +
+          `Transform this space into the target style. Output a detailed 2 to 3 sentence prompt for an image generator. Do not include markdown, bullet points, or meta commentary.`;
+
+        const visionResponse = await googleGenAIClient.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: [
+            {
+              inlineData: {
+                mimeType: file.mimetype || 'image/jpeg',
+                data: file.buffer.toString('base64')
+              }
+            },
+            {
+              text: `${roleInstruction}\n\n${visionPrompt}`
+            }
+          ]
+        });
+
+        const enhancedText = visionResponse.text?.trim();
+        if (enhancedText) {
+          finalPrompt = enhancedText;
+          console.log(`✨ Gemini Vision synthesized custom architectural blueprint: "${finalPrompt.slice(0, 100)}..."`);
+        }
       } catch (geminiErr) {
-        console.error('Gemini enhancement failed, bypassing to default:', geminiErr.message);
+        console.error('Gemini vision blueprint synthesis failed, using fallback:', geminiErr.message);
       }
     }
 
-    // STEP 2: IMAGE GENERATION (GOOGLE GEMINI MULTIMODAL IMAGE AI)
+    // STEP 2: HIGH-FIDELITY IMAGE GENERATION VIA GEMINI 3.1 FLASH IMAGE
     let generatedImageBase64 = null;
     let engineUsed = "none";
 
     if (geminiApiKey) {
       try {
-        console.log('⚡ Generating room transformation via Google Gemini Image AI (gemini-3.1-flash-image)...');
+        console.log(`⚡ Generating high-fidelity transformation via gemini-3.1-flash-image [${category}]...`);
+
+        // Construct master conditioning directive incorporating the synthesized blueprint
+        const masterDirective = 
+          `Transform and completely redesign this ${category === 'exterior' ? 'house exterior' : category === 'landscape' ? 'outdoor landscape' : category === 'commercial' ? 'commercial space' : 'room'} ` +
+          `according to this architectural design blueprint:\n${finalPrompt}\n\n` +
+          `CRITICAL STRUCTURAL PRESERVATION RULES:\n` +
+          `1. Maintain the exact camera angle, perspective vanishing lines, and viewing elevation of the original photo.\n` +
+          `2. Strictly preserve the original structural boundaries: do not change wall positions, window placements, doors, or rooflines.\n` +
+          `3. Render in hyper-realistic architectural photography quality, 8k resolution, Hasselblad H6D-100c, f/8, natural material textures, correct physics, zero distortion.\n` +
+          `AVOID: ${NEGATIVE_PROMPT}`;
+
         const response = await googleGenAIClient.models.generateContent({
           model: 'gemini-3.1-flash-image',
           contents: [
@@ -219,7 +280,7 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
               }
             },
             {
-              text: `Transform and redesign this ${roomType || 'room'} in a ${designPrompt} style. Maintain the architectural layout, walls, windows, and perspective while completely upgrading the interior decor, flooring, furniture, textures, and lighting with high-end photorealistic 8k quality.`
+              text: masterDirective
             }
           ]
         });
@@ -230,7 +291,7 @@ app.post('/api/decorate', verifySupabaseToken, upload.single('image'), async (re
             const mime = part.inlineData.mimeType || 'image/jpeg';
             generatedImageBase64 = `data:${mime};base64,${part.inlineData.data}`;
             engineUsed = "google-gemini-image";
-            console.log('✅ Google Gemini Image AI successfully generated room transformation!');
+            console.log('✅ Google Gemini Image AI successfully generated high-fidelity transformation!');
             break;
           }
         }

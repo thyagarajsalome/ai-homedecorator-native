@@ -20,13 +20,14 @@ export const useRoomGeneration = () => {
   const generateDesign = async (
     imageUri: string,
     prompt: string,
-    roomType: string
+    roomType: string,
+    options?: geminiService.DecorateRoomOptions
   ): Promise<GenerationResult | false> => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await geminiService.decorateRoom(imageUri, prompt, roomType);
+      const result = await geminiService.decorateRoom(imageUri, prompt, roomType, options);
       setGeneratedImageUrl(result.generatedImage);
 
       return {
