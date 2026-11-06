@@ -45,3 +45,6 @@ app-example
 # Keys
 .env
 *.aab
+
+*.apk
+
